@@ -70,16 +70,16 @@ def test_find_bboxes():
             self.fd_confidence_threshold = 0.9
     test_opt = OptContainer()
 
-    # num_cpus = mp.cpu_count()
-    # num_frames_to_process = num_cpus * 16
-    num_frames_to_process = 32
-    # if num_frames_to_process > 173:  # this is the length of total video
-    #     num_frames_to_process = 173
+    num_cpus = mp.cpu_count()
+    num_frames_to_process = num_cpus * 16
+#     num_frames_to_process = 32
+    if num_frames_to_process > 173:  # this is the length of total video
+        num_frames_to_process = 173
     processed_frames = processed_frames[:num_frames_to_process-1]
-    faces = find_bboxes(face_detector_model, test_opt, processed_frames)
-    # faces = parallelize_face_detection(face_detector=face_detector_model, frames=processed_frames,
-    # num_cpus=num_cpus, opt=test_opt)
-    # faces = [item for sublist in faces for item in sublist]
+#     faces = find_bboxes(face_detector_model, test_opt, processed_frames)
+    faces = parallelize_face_detection(face_detector=face_detector_model, frames=processed_frames,
+    num_cpus=num_cpus, opt=test_opt)
+    faces = [item for sublist in faces for item in sublist]
     master_bboxes = [extract_bboxes(face_group) for face_group in faces]
 
     # read in manual annotation
