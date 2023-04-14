@@ -1,8 +1,11 @@
 name: Build and Test iCatcher+
-on: [push]
+on: 
+  push:
+    branches:
+      - sw/updated_face_detection
 jobs:
   build-project:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
