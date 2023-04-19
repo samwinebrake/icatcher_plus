@@ -33,7 +33,7 @@ class FaceClassifierArgs:
     """
     encapsulates face classifier arguments
     """
-    def __init__(self, device):
+    def __init__(self, device, model="vgg16"):
         self.device = device
         self.rotation = False
         self.cropping = False
@@ -42,7 +42,7 @@ class FaceClassifierArgs:
         self.color = False
         self.erasing = False
         self.noise = False
-        self.model = "vgg16"
+        self.model = model
         self.dropout = 0.0
 
 
@@ -216,7 +216,7 @@ def load_models(opt):
     gaze_model.eval()
 
     if opt.fc_model:
-        fc_args = FaceClassifierArgs(opt.device)
+        fc_args = FaceClassifierArgs(opt.device, opt.fc_model_arch)
         face_classifier_model, fc_input_size = face_classifier.fc_model.init_face_classifier(fc_args,
                                                                                 model_name=fc_args.model,
                                                                                 num_classes=2,
