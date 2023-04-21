@@ -5,7 +5,7 @@ on:
       - sw/updated_face_detection
 jobs:
   build-project:
-    runs-on: macos-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout
         uses: actions/checkout@v3
