@@ -46,7 +46,7 @@ class FaceClassifierArgs:
         self.dropout = 0.0
 
 
-def select_face(bboxes, frame, fc_model, fc_data_transforms, hor, ver):
+def select_face(bboxes, frame, fc_model, fc_data_transforms, hor, ver, device="cpu"):
     """
     selects a correct face from candidates bbox in frame
     :param bboxes: the bounding boxes of candidates
@@ -74,7 +74,7 @@ def select_face(bboxes, frame, fc_model, fc_data_transforms, hor, ver):
             img = fc_data_transforms['val'](img)
             faces.append(img)
         centers = np.stack(centers)
-        faces = torch.stack(faces).to(fc_model.device)
+        faces = torch.stack(faces).to(device)
         output = fc_model(faces)
         _, preds = torch.max(output, 1)
         preds = preds.cpu().numpy()
@@ -387,7 +387,7 @@ def predict_from_video(opt):
                 else:
                     from_tracker.append(True)
                     cv2_bboxes = [last_known_valid_bbox]
-                selected_bbox = select_face(cv2_bboxes, frame, face_classifier_model, face_classifier_data_transforms, hor, ver)
+                selected_bbox = select_face(cv2_bboxes, frame, face_classifier_model, face_classifier_data_transforms, hor, ver, device=opt.device)
                 crop, my_box = extract_crop(frame, selected_bbox, opt)
                 if selected_bbox is None:
                     answers.append(classes['nobabyface'])  # if selecting face fails, treat as away and mark invalid

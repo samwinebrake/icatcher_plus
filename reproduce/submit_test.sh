@@ -9,13 +9,13 @@
 #SBATCH --partition=quest
 #SBATCH --mem=8G
 
-cd /scratch2/weka/quest/shehadak/gaze-coding/icatcher_plus/
+cd /scratch2/weka/quest/shehadak/gaze-coding/icatcher_plus/reproduce
 source ~/.bash_profile
 conda activate gaze
 echo "Run Started"
 
 python test.py \
-    /home/shehadak/weka/gaze-coding/icatcher_plus/reproduce/videos/test_vid_1000.mp4 \
+    /scratch2/weka/quest/shehadak/videos/public/study-57bc591dc0d9d70055f775db_child-9241db6d_video-bbdeb6aa_privacy-public_video.mp4 \
     models/icatcher+_lookit.pth --fc_model models/our_fc_model.pt \
     --output_video_path test_output/ \
     --fc_model_arch vgg19_bn \
