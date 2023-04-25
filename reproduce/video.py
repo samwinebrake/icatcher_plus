@@ -1,5 +1,6 @@
 from shutil import which
 import ffmpeg
+import shutil
 import logging
 import subprocess
 import re
@@ -19,9 +20,11 @@ def get_fps(video_file_path):
 
 
 def is_video_vfr(video_file_path, get_meta_data=False):
+    # ENVBIN = Path(sys.exec_prefix, "bin", "ffmpeg")
     ENVBIN = "ffmpeg"
-    if not which(ENVBIN):
-            ENVBIN = Path("ffmpeg.exe")
+    # if not ENVBIN.exists():
+    if not shutil.which(ENVBIN):
+        ENVBIN = Path("ffmpeg.exe")
     args = [str(ENVBIN)+" ",
             "-i \"{}\"".format(str(video_file_path)),
             "-vf vfrdet",

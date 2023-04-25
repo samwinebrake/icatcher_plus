@@ -79,7 +79,7 @@ def build_marchman_video_dataset(raw_dataset_path, raw_dataset_type):
     # parse csv file
     rows = []
     with open(csv_location) as file:
-        csv_file = csv.reader(file, delimiter="\t")
+        csv_file = csv.reader(file)
         header = next(csv_file)
         header = header[0].split(",")
         for row in csv_file:
@@ -161,7 +161,7 @@ def build_lookit_video_dataset(raw_dataset_path, csv_location):
     # parse csv file
     rows = []
     with open(csv_location) as file:
-        csv_file = csv.reader(file, delimiter="\t")
+        csv_file = csv.reader(file)
         header = next(csv_file)
         for row in csv_file:
             rows.append(row)
@@ -218,7 +218,7 @@ def preprocess_raw_lookit_dataset(args):
     :return:
     """
     np.random.seed(seed=args.seed)  # seed the random generator
-    csv_file = Path(args.raw_dataset_path / "prephys_split0_videos_detailed.tsv")
+    csv_file = Path(args.raw_dataset_path / "LookitPrefPhys_videos_split0_hashed_data.csv")
     video_dataset = build_lookit_video_dataset(args.raw_dataset_path, csv_file)
     # print some stats
     with open(csv_file, 'r') as csv_fp:
@@ -252,7 +252,7 @@ def preprocess_raw_lookit_dataset(args):
     else:
         # filter out videos according to one_video_per_child_policy and train_val_disjoint
         if args.one_video_per_child_policy == "include_all":
-            double_coded = [x for x in videos if x["has_2coding"]]
+            double_coded = [x for x in videos if x["has_1coding"]]
             threshold = int(len(videos) * args.val_percent)
             val_set = np.random.choice(double_coded, size=threshold, replace=False)
             if args.train_val_disjoint:
@@ -294,7 +294,9 @@ def preprocess_raw_lookit_dataset(args):
         else:
             raise NotImplementedError
     split_path = Path(args.output_folder, "saved_split")
-    np.savez(split_path, [[x["video_id"] for x in train_set], [x["video_id"] for x in val_set]])
+    split_ids = [[x["video_id"] for x in train_set], [x["video_id"] for x in val_set]]
+    np.savez(split_path, np.array(split_ids, dtype=object))
+    # np.savez(split_path, [[x["video_id"] for x in train_set], [x["video_id"] for x in val_set]])
     logging.info('[preprocess_raw] training set: {} validation set: {}'.format(len(train_set), len(val_set)))
     create_symbolic_links(train_set, val_set, args)
 
@@ -397,16 +399,20 @@ def create_symbolic_links(train_set, val_set, args):
         assert coding_file_path.is_file()
         src1 = video_file_path
         dst1 = Path(args.video_folder / (video_file["video_id"] + video_file_path.suffix))
-        os.symlink(str(src1), str(dst1))
+        if not dst1.is_file():
+            os.symlink(str(src1), str(dst1))
         src2 = coding_file_path
         dst2 = Path(args.train_coding1_folder / (video_file["video_id"] + coding_file_path.suffix))
-        os.symlink(str(src2), str(dst2))
+        if not dst2.is_file():
+            os.symlink(str(src2), str(dst2))
+        
         if video_file["second_coding_file"]:
             second_coding_file_path = video_file["second_coding_file"]
             assert second_coding_file_path.is_file()
             src3 = second_coding_file_path
             dst3 = Path(args.train_coding2_folder / (video_file["video_id"] + second_coding_file_path.suffix))
-            os.symlink(str(src3), str(dst3))
+            if not dst3.is_file():
+                os.symlink(str(src3), str(dst3))
     for video_file in val_set:
         video_file_path = video_file["video_path"]
         coding_file_path = video_file["first_coding_file"]
@@ -415,13 +421,17 @@ def create_symbolic_links(train_set, val_set, args):
         assert coding_file_path.is_file()
         src1 = video_file_path
         dst1 = Path(args.video_folder / (video_file["video_id"] + video_file_path.suffix))
-        os.symlink(str(src1), str(dst1))
+        if not dst1.is_file():
+            os.symlink(str(src1), str(dst1))
         src2 = coding_file_path
         dst2 = Path(args.val_coding1_folder / (video_file["video_id"] + coding_file_path.suffix))
-        os.symlink(str(src2), str(dst2))
-        src3 = second_coding_file_path
-        dst3 = Path(args.val_coding2_folder / (video_file["video_id"] + second_coding_file_path.suffix))
-        os.symlink(str(src3), str(dst3))
+        if not dst2.is_file():
+            os.symlink(str(src2), str(dst2))
+        if second_coding_file_path:
+            src3 = second_coding_file_path
+            dst3 = Path(args.val_coding2_folder / (video_file["video_id"] + second_coding_file_path.suffix))
+            if not dst3.is_file():
+                os.symlink(str(src3), str(dst3))
 
 
 def detect_face_opencv_dnn(net, frame, conf_threshold):
@@ -507,7 +517,7 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                                        args.raw_dataset_type,
                                        first_coder=True)
         elif args.raw_dataset_type == "lookit":
-            csv_file = Path(args.raw_dataset_path / "prephys_split0_videos_detailed.tsv")
+            csv_file = Path(args.raw_dataset_path / "LookitPrefPhys_videos_split0_hashed_data.csv")
             parser = parsers.LookitParser(fps,
                                           csv_file,
                                           first_coder=True,
@@ -569,12 +579,13 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                                         'face_height': face_height,
                                         'face_width': face_width
                                     }
-                                    img_filename = img_folder / f'{frame_counter:05d}_{i:01d}.png'
-                                    if not img_filename.is_file() or force_create:
-                                        cv2.imwrite(str(img_filename), resized_img)
-                                    box_filename = box_folder / f'{frame_counter:05d}_{i:01d}.npy'
-                                    if not box_filename.is_file() or force_create:
-                                        np.save(str(box_filename), feature_dict)
+                                    if len(resized_img) != 0:
+                                        img_filename = img_folder / f'{frame_counter:05d}_{i:01d}.png'
+                                        if not img_filename.is_file() or force_create:
+                                            cv2.imwrite(str(img_filename), resized_img)
+                                        box_filename = box_folder / f'{frame_counter:05d}_{i:01d}.npy'
+                                        if not box_filename.is_file() or force_create:
+                                            np.save(str(box_filename), feature_dict)
                                 valid_counter += 1
                                 face_labels.append(selected_face)
                                 # logging.info(f"valid frame in class {gaze_class}")
@@ -652,7 +663,7 @@ def generate_second_gaze_labels(args, force_create=False, visualize_confusion=Fa
                                            args.raw_dataset_type,
                                            first_coder=False)
             elif args.raw_dataset_type == "lookit":
-                csv_file = Path(args.raw_dataset_path / "prephys_split0_videos_detailed.tsv")
+                csv_file = Path(args.raw_dataset_path / "LookitPrefPhys_videos_split0_hashed_data.csv")
                 parser = parsers.LookitParser(fps,
                                               csv_file,
                                               first_coder=False,

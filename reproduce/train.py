@@ -33,7 +33,8 @@ def train_loop(rank, args):
     val_dataloader = data.MyDataLoader(args)
     model = models.MyModel(args)
     # actual epoch loop
-    for epoch in range(args.number_of_epochs):
+    num_epochs = 0 if args.eval_only else args.number_of_epochs
+    for epoch in range(num_epochs):
         if args.distributed:
             dist.barrier()
             train_dataloader.dataloader.sampler.set_epoch(epoch)

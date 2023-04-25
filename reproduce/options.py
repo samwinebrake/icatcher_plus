@@ -59,6 +59,7 @@ def parse_arguments_for_training():
     parser.add_argument("--log", action="store_true", help="Logs into a file instead of stdout")
     parser.add_argument("-v", "--verbosity", type=str, choices=["debug", "info", "warning"], default="info",
                         help="Selects verbosity level")
+    parser.add_argument("--eval_only", action="store_true", help="Only run evaluation pipeline (Equivalent to running training for 0 epochs)")
     args = parser.parse_args()
     args.dataset_folder = Path(args.dataset_folder)
     # add some useful arguments for the rest of the code

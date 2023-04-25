@@ -199,7 +199,7 @@ class LookitParser(BaseParser):
         # load label file
         labels = np.genfromtxt(open(label_path, "rb"), dtype='str', delimiter=",", skip_header=3)
         # sort by time
-        times = labels[:, 0].astype(np.int)
+        times = labels[:, 0].astype(int)
         sorting_indices = np.argsort(times)
         sorted_labels = labels[sorting_indices]
         return sorted_labels
