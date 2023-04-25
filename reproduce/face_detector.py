@@ -17,12 +17,21 @@ def download_from_gdrive(file_id: str, output_name: str):
     :return: None
     """
     # Check if the file already exists in the local directory
-    if os.path.exists(os.path.join(os.path.join(str(Path(__file__).parents[1]), 'reproduce/models/'), output_name)):
+    if os.path.exists(
+        os.path.join(
+            os.path.join(str(Path(__file__).parents[1]), "reproduce/models/"),
+            output_name,
+        )
+    ):
         print(f"File with ID {file_id} already exists in the local directory.")
         return
-    
-    os.makedirs(os.path.join(str(Path(__file__).parents[1]), 'reproduce/models/'), exist_ok=True)
-    download_directory = os.path.join(str(Path(__file__).parents[1]), 'reproduce/models/')
+
+    os.makedirs(
+        os.path.join(str(Path(__file__).parents[1]), "reproduce/models/"), exist_ok=True
+    )
+    download_directory = os.path.join(
+        str(Path(__file__).parents[1]), "reproduce/models/"
+    )
 
     # Download the file
     url = f"https://drive.google.com/uc?id={file_id}"
@@ -37,14 +46,18 @@ def create_retina_model(gpu_id=-1):
     Downloads retina face weights if not already in models directory, creates retina face model.
     :return: the face detector model
     """
-    file_id = '14KX6VqF69MdSPk3Tr9PlDYbq7ArpdNUW'
-    output_name = 'Resnet50_Final.pth'
+    file_id = "14KX6VqF69MdSPk3Tr9PlDYbq7ArpdNUW"
+    output_name = "Resnet50_Final.pth"
 
     # download_directory = 'icatcher_plus/reproduce/models/'
     download_from_gdrive(file_id, output_name)
-    download_directory = os.path.join(str(Path(__file__).parents[1]), 'reproduce/models/')
+    download_directory = os.path.join(
+        str(Path(__file__).parents[1]), "reproduce/models/"
+    )
     face_detector_model_file = Path(download_directory, output_name)
-    face_detector_model = RetinaFace(gpu_id=gpu_id, model_path=face_detector_model_file, network="resnet50")
+    face_detector_model = RetinaFace(
+        gpu_id=gpu_id, model_path=face_detector_model_file, network="resnet50"
+    )
     return face_detector_model
 
 
@@ -97,7 +110,9 @@ def process_frames(cap, frames, h_start_at, w_start_at, w_end_at):
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame)
         ret, image = cap.read()
         if ret:
-            image = image[h_start_at:, w_start_at:w_end_at, :]  # crop x% of the video from the top
+            image = image[
+                h_start_at:, w_start_at:w_end_at, :
+            ]  # crop x% of the video from the top
             processed_frames.append(image)
         else:
             return processed_frames
@@ -113,7 +128,10 @@ def find_bboxes(face_detector, opt, processed_frames):
     :return: list of all faces and confidence scores present in all frames
     """
     all_faces = []
-    batched_frames = [processed_frames[i:i + opt.fd_batch_size] for i in range(0, len(processed_frames), opt.fd_batch_size)]
+    batched_frames = [
+        processed_frames[i : i + opt.fd_batch_size]
+        for i in range(0, len(processed_frames), opt.fd_batch_size)
+    ]
     for frame_group in batched_frames:
         faces = face_detector(frame_group)
         all_faces += faces
@@ -143,11 +161,17 @@ def detect_face_opencv_dnn(net, frame, conf_threshold):
         if confidence > conf_threshold:
             x1 = max(int(detections[0, 0, i, 3] * frame_width), 0)  # left side of box
             y1 = max(int(detections[0, 0, i, 4] * frame_height), 0)  # top side of box
-            if x1 >= frame_width or y1 >= frame_height:  # if they are larger than image size, bbox is invalid
+            if (
+                x1 >= frame_width or y1 >= frame_height
+            ):  # if they are larger than image size, bbox is invalid
                 continue
-            x2 = min(int(detections[0, 0, i, 5] * frame_width), frame_width)  # either right side of box or frame width
-            y2 = min(int(detections[0, 0, i, 6] * frame_height), frame_height)  # either the bottom side of box of frame height
-            bboxes.append([x1, y1, x2-x1, y2-y1])  # (left, top, width, height)
+            x2 = min(
+                int(detections[0, 0, i, 5] * frame_width), frame_width
+            )  # either right side of box or frame width
+            y2 = min(
+                int(detections[0, 0, i, 6] * frame_height), frame_height
+            )  # either the bottom side of box of frame height
+            bboxes.append([x1, y1, x2 - x1, y2 - y1])  # (left, top, width, height)
     return bboxes
 
 

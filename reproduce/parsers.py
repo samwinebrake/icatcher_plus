@@ -8,7 +8,7 @@ import pandas as pd
 
 class BaseParser:
     def __init__(self):
-        self.classes = {'away': 0, 'left': 1, 'right': 2}
+        self.classes = {"away": 0, "left": 1, "right": 2}
 
     def parse(self, video_id, label_path):
         """
@@ -66,6 +66,7 @@ class TrivialParser(BaseParser):
     """
     A trivial toy parser that labels all video as "left" if input "file" is not None
     """
+
     def __init__(self):
         super().__init__()
 
@@ -81,6 +82,7 @@ class CompressedParser(BaseParser):
     parses a npz file saved for visualizations
     to see how it is created check out test.py
     """
+
     def __init__(self):
         super().__init__()
 
@@ -89,7 +91,7 @@ class CompressedParser(BaseParser):
         data = data["arr_0"]
         data[:4] = -3  # mark first frames as invalid
         data[-4:] = -3  # mark last frames as invalid
-        return data, 4, len(data)-4
+        return data, 4, len(data) - 4
 
     def get_confidence(self, label_path):
         data = np.load(label_path)
@@ -103,19 +105,28 @@ class LookitParser(BaseParser):
     """
     a parser that parses Lookit format, a slightly different version of PrefLookTimestampParser.
     """
+
     def __init__(self, fps, csv_file=None, first_coder=True, return_time_stamps=False):
         super().__init__()
         self.fps = fps
         self.return_time_stamps = return_time_stamps
         if csv_file is not None:
-            self.video_dataset = preprocess.build_lookit_video_dataset(csv_file.parent, csv_file)
+            self.video_dataset = preprocess.build_lookit_video_dataset(
+                csv_file.parent, csv_file
+            )
         else:
             self.video_dataset = None
         self.first_coder = first_coder
         self.classes = ["away", "left", "right"]
         self.exclude = ["outofframe", "preview", "instructions"]
         self.special = ["codingactive"]
-        self.poses = ["over_shoulder", "sitting_in_lap", "sitting_alone", "other_posture", "no_posture"]
+        self.poses = [
+            "over_shoulder",
+            "sitting_in_lap",
+            "sitting_alone",
+            "other_posture",
+            "no_posture",
+        ]
 
     def parse(self, video_id, label_path=None, extract_poses=False):
         """
@@ -130,17 +141,25 @@ class LookitParser(BaseParser):
             selected_classes = self.classes
         if label_path is None:
             if self.video_dataset is None:
-                raise ValueError("no label path provided and no csv file provided on initialization")
+                raise ValueError(
+                    "no label path provided and no csv file provided on initialization"
+                )
             else:
                 if self.first_coder:
                     label_path = self.video_dataset[video_id]["first_coding_file"]
                 else:
                     label_path = self.video_dataset[video_id]["second_coding_file"]
                 if label_path is None:
-                    logging.warning("Video ID: " + str(video_id) + " no matching vcx was found.")
+                    logging.warning(
+                        "Video ID: " + str(video_id) + " no matching vcx was found."
+                    )
                     return None
                 if not label_path.is_file():
-                    logging.warning("For the file: " + str(label_path) + " no matching vcx was found.")
+                    logging.warning(
+                        "For the file: "
+                        + str(label_path)
+                        + " no matching vcx was found."
+                    )
                     return None
         labels = self.load_and_sort(label_path)
         # initialize
@@ -153,7 +172,9 @@ class LookitParser(BaseParser):
             if labels[i, 2] in selected_classes:
                 cur_class = labels[i, 2]
                 if prev_class != cur_class:
-                    assert frame > prev_frame  # how can two labels be different but point to same time?
+                    assert (
+                        frame > prev_frame
+                    )  # how can two labels be different but point to same time?
                 output.append([frame, True, cur_class])
                 prev_class = cur_class
                 prev_frame = frame
@@ -173,7 +194,11 @@ class LookitParser(BaseParser):
                 prev_class = output[last_overlap][2]
                 output.insert(last_overlap + 1, [region_start, False, prev_class])
             # deal with labels inside region
-            q = [index for index, value in enumerate(output) if region_start <= value[0] < region_end]
+            q = [
+                index
+                for index, value in enumerate(output)
+                if region_start <= value[0] < region_end
+            ]
             if q:
                 for index in q:
                     output[index][1] = False
@@ -197,7 +222,9 @@ class LookitParser(BaseParser):
 
     def load_and_sort(self, label_path):
         # load label file
-        labels = np.genfromtxt(open(label_path, "rb"), dtype='str', delimiter=",", skip_header=3)
+        labels = np.genfromtxt(
+            open(label_path, "rb"), dtype="str", delimiter=",", skip_header=3
+        )
         # sort by time
         times = labels[:, 0].astype(np.int)
         sorting_indices = np.argsort(times)
@@ -221,7 +248,9 @@ class LookitParser(BaseParser):
         prev_frame = start
         for i in range(len(sorted_labels)):
             if sorted_labels[i, 2] == "end":
-                frame_number = int(sorted_labels[i, 0]) + 1  # trial labels are inclusive, i.e. they include last frame.
+                frame_number = (
+                    int(sorted_labels[i, 0]) + 1
+                )  # trial labels are inclusive, i.e. they include last frame.
                 if not self.return_time_stamps:  # convert to frame numbers
                     frame = int(frame_number * self.fps / 1000)
                 else:
@@ -249,6 +278,7 @@ class PrefLookTimestampParser(BaseParser):
     a parser that can parse PrefLookTimestamp as described here:
     https://osf.io/3n97m/
     """
+
     def __init__(self, fps, labels_folder=None, ext=None, return_time_stamps=False):
         super().__init__()
         self.fps = fps
@@ -272,7 +302,9 @@ class PrefLookTimestampParser(BaseParser):
             label_path = Path(file)
         else:
             label_path = Path(self.labels_folder, file + self.ext)
-        labels = np.genfromtxt(open(label_path, "rb"), dtype='str', delimiter=",", skip_header=3)
+        labels = np.genfromtxt(
+            open(label_path, "rb"), dtype="str", delimiter=",", skip_header=3
+        )
         output = []
         start, end = 0, 0
         for entry in range(labels.shape[0]):
@@ -284,13 +316,17 @@ class PrefLookTimestampParser(BaseParser):
                 dur = int(int(labels[entry, 1]) * self.fps / 1000)
             class_name = labels[entry, 2]
             valid_flag = 1 if class_name in classes else 0
-            if class_name == "codingactive":  # indicates the period of video when coding was actually performed
+            if (
+                class_name == "codingactive"
+            ):  # indicates the period of video when coding was actually performed
                 codingactive_counter += 1
                 start, end = frame, dur
                 frame = dur  # if codingactive: add another annotation signaling invalid frames from now on
             frame_label = [frame, valid_flag, class_name]
             output.append(frame_label)
-        assert codingactive_counter <= 1  # current parser doesnt support multiple coding active periods
+        assert (
+            codingactive_counter <= 1
+        )  # current parser doesnt support multiple coding active periods
         output.sort(key=lambda x: x[0])
         if end == 0:
             end = int(output[-1][0])
@@ -304,10 +340,13 @@ class VCXParser(BaseParser):
     """
     A parser that can parse vcx files that are used in princeton / marchman laboratories
     """
+
     def __init__(self, fps, raw_dataset_path, raw_dataset_type, first_coder=True):
         super().__init__()
         self.fps = fps
-        self.video_dataset = preprocess.build_marchman_video_dataset(raw_dataset_path, raw_dataset_type)
+        self.video_dataset = preprocess.build_marchman_video_dataset(
+            raw_dataset_path, raw_dataset_type
+        )
         self.first_coder = first_coder
         self.start_times = self.process_start_times()
 
@@ -317,10 +356,12 @@ class VCXParser(BaseParser):
             if entry["start_timestamp"]:
                 time = entry["start_timestamp"]
                 time_parts = [int(x) for x in time.split(":")]
-                timestamp = time_parts[0]*60*60*self.fps +\
-                            time_parts[1]*60*self.fps +\
-                            time_parts[2]*self.fps +\
-                            time_parts[3]
+                timestamp = (
+                    time_parts[0] * 60 * 60 * self.fps
+                    + time_parts[1] * 60 * self.fps
+                    + time_parts[2] * self.fps
+                    + time_parts[3]
+                )
                 start_times[entry["video_id"]] = timestamp
         return start_times
 
@@ -337,7 +378,9 @@ class VCXParser(BaseParser):
             else:
                 label_path = self.video_dataset[video_id]["second_coding_file"]
             if not label_path.is_file():
-                logging.warning("For the file: " + str(label_path) + " no matching vcx was found.")
+                logging.warning(
+                    "For the file: " + str(label_path) + " no matching vcx was found."
+                )
                 return None
         return self.xml_parse(video_id, label_path)
 
@@ -346,7 +389,7 @@ class VCXParser(BaseParser):
         root = tree.getroot()
         # find "Responses" child, and return the child right after it.
         flag = False
-        for child in root.iter('*'):
+        for child in root.iter("*"):
             if flag:
                 responses_element = child
                 break
@@ -376,16 +419,20 @@ class VCXParser(BaseParser):
         cur_timestamp = -1
         for response in sorted_responses:
             timestamp = response[1]
-            assert timestamp > cur_timestamp, "Can't Have two responses for the same timestamp !"
+            assert (
+                timestamp > cur_timestamp
+            ), "Can't Have two responses for the same timestamp !"
             cur_timestamp = timestamp
             status = response[2]
             label = response[3]
-            if label == 'off' or label == 'center':
-                label = 'away'
+            if label == "off" or label == "center":
+                label = "away"
             if self.start_times:
                 start_time = self.start_times[video_id]
                 timestamp -= start_time
-            assert 0 <= timestamp < 60 * 60 * self.fps, "Starting time provided is after first response !"
+            assert (
+                0 <= timestamp < 60 * 60 * self.fps
+            ), "Starting time provided is after first response !"
             final_responses.append([timestamp, status, label])
         assert len(final_responses) != 0, "No responses in file !"
         start = final_responses[0][0]
@@ -405,10 +452,12 @@ class VCXParser(BaseParser):
         except ValueError:
             status = response_array[response_array.index("Slide") + 1]
         label = response_array[response_array.index("Type") + 1]
-        timestamp = int(frame) +\
-                    int(second) * self.fps +\
-                    int(minute) * 60 * self.fps +\
-                    int(hour) * 60 * 60 * self.fps
+        timestamp = (
+            int(frame)
+            + int(second) * self.fps
+            + int(minute) * 60 * self.fps
+            + int(hour) * 60 * 60 * self.fps
+        )
         return [response_index, timestamp, int(status.lower() == "true"), label]
 
     def get_trial_intervals(self, start, responses):
@@ -431,18 +480,23 @@ class DatavyuParser(BaseParser):
     """
     parses datavyu files
     """
+
     def __init__(self):
         super().__init__()
 
     def parse(self, video_id, label_path):
-        if label_path:  # AW/LB are the coder initials, and they used different column names unfortunately
+        if (
+            label_path
+        ):  # AW/LB are the coder initials, and they used different column names unfortunately
             data = pd.read_csv(label_path)
-            coding = np.ones([len(data), 1])  # on looks are not coded (implied by other conditions)
-            coding[data['look_type'] == 'n'] = 0  # off looks
-            coding[data['look_type'] == 'e'] = -1  # error looks
+            coding = np.ones(
+                [len(data), 1]
+            )  # on looks are not coded (implied by other conditions)
+            coding[data["look_type"] == "n"] = 0  # off looks
+            coding[data["look_type"] == "e"] = -1  # error looks
             coding = coding.squeeze()
             trials = self.get_trial_intervals(0, label_path)
-            coding[:trials[0][0]] = -1  # mark all coding until first trial as invalid
+            coding[: trials[0][0]] = -1  # mark all coding until first trial as invalid
             return coding, trials[0][0], trials[-1][1]
         else:
             return None
@@ -450,24 +504,38 @@ class DatavyuParser(BaseParser):
     def get_trial_intervals(self, start, label_path):
         if label_path:
             data = pd.read_csv(label_path)  # read data
-            data = data[data['trial_type'] != 'a']  # remove attention getter trials (haven't been coded meticulously)
-            onset_col = data['trial_onset']
+            data = data[
+                data["trial_type"] != "a"
+            ]  # remove attention getter trials (haven't been coded meticulously)
+            onset_col = data["trial_onset"]
             onset_times = np.unique(onset_col)
-            onset_frames = [data['nFrame'].iloc[np.where(onset_col==time)[0][0]] for time in onset_times[~np.isnan(onset_times)]]  # first frame of trial
-            offset_col = data['trial_offset']  # get offset column
+            onset_frames = [
+                data["nFrame"].iloc[np.where(onset_col == time)[0][0]]
+                for time in onset_times[~np.isnan(onset_times)]
+            ]  # first frame of trial
+            offset_col = data["trial_offset"]  # get offset column
             offset_times = np.unique(offset_col)  # unique offset times, add one
-            offset_frames = [1 + data['nFrame'].iloc[np.where(offset_col==time)[0][-1]] for time in offset_times[~np.isnan(offset_times)]]  # last frame of trial
-            zipped_trial_times = list(np.dstack([onset_frames, offset_frames]).flatten())  # interleave onsets and offsets
-            zipped_trial_times = [zipped_trial_times[i: i+2] for i in range(0, len(zipped_trial_times), 2)]  # convert to list of lists
+            offset_frames = [
+                1 + data["nFrame"].iloc[np.where(offset_col == time)[0][-1]]
+                for time in offset_times[~np.isnan(offset_times)]
+            ]  # last frame of trial
+            zipped_trial_times = list(
+                np.dstack([onset_frames, offset_frames]).flatten()
+            )  # interleave onsets and offsets
+            zipped_trial_times = [
+                zipped_trial_times[i : i + 2]
+                for i in range(0, len(zipped_trial_times), 2)
+            ]  # convert to list of lists
             return zipped_trial_times
         else:
             return None
+
 
 def parse_illegal_transitions_file(path, skip_header=True):
     illegal_transitions = []
     corrected_transitions = []
     if path is not None:
-        with open(path, newline='') as f:
+        with open(path, newline="") as f:
             rows = f.readlines()
         # skip header
         if skip_header:
@@ -476,11 +544,15 @@ def parse_illegal_transitions_file(path, skip_header=True):
             row = row.split(",")
             row = [x.strip() for x in row]
             if len(row) != 2:
-                raise ValueError("Illegal transitions file needs to have exactly two columns.")
+                raise ValueError(
+                    "Illegal transitions file needs to have exactly two columns."
+                )
             ilegal, corrected = row
             try:
                 illegal_transitions.append([int(x) for x in ilegal])
                 corrected_transitions.append([int(x) for x in corrected])
             except ValueError:
-                raise ValueError("Illegal transitions file needs to have only integers.")
+                raise ValueError(
+                    "Illegal transitions file needs to have only integers."
+                )
     return illegal_transitions, corrected_transitions

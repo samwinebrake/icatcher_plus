@@ -7,6 +7,7 @@ class Logger:
     to view when training on a remote target, you must launch tensorboard executable with no-hangup (nohup) on some port,
     then port forward into your local machine.
     """
+
     def __init__(self, opt):
         self.opt = opt
         if self.opt.rank == 0:
