@@ -272,7 +272,7 @@ def parse_arguments_for_preprocess():
     parser.add_argument("--seed", type=int, default=43, help="random seed (controls split selection)")
     parser.add_argument("-v", "--verbosity", type=str, choices=["debug", "info", "warning"], default="info",
                         help="Selects verbosity level")
-    parser.add_argument("--fd_model", type=str, choices=["retinaface, opencv_dnn"], default="retinaface",
+    parser.add_argument("--fd_model", type=str, choices=["retinaface", "opencv_dnn"], default="retinaface",
                         help="the face detector model used. opencv_dnn may be more suitable for cpu usage if speed is priority over accuracy")
     args = parser.parse_args()
     args.raw_dataset_path = Path(args.raw_dataset_path)

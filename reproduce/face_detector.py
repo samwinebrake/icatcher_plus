@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from pathos.pools import ProcessPool
 from face_detection import RetinaFace
-from util import download_from_gdrive
+from reproduce.util import download_from_gdrive
 
 
 def create_retina_model(gpu_id=-1):
@@ -37,10 +37,12 @@ def threshold_faces(all_faces: list, confidence_threshold: float):
     return all_faces
 
 
-def extract_bboxes(face_group_entry):
+def extract_bboxes(face_group_entry, frame_height, frame_width):
     """
     Extracts the bounding box from the face detector output
     :param face_group_entry: a group of faces detected from the face detector
+    :param frame_height: amount of pixels in height of frame
+    :param frame_width: amount of pixels in width of frame
     :return: the bounding boxes associated with each face in the face group
     """
     bboxes = []
@@ -49,9 +51,16 @@ def extract_bboxes(face_group_entry):
             if isinstance(face[0], tuple):
                 face = list(face[0])
             bbox = face[0]
+            bbox[0] = max(bbox[0], 0)  # left side of box
+            bbox[1] = max(bbox[1], 0)  # top side of box
+            if bbox[0] >= frame_width or bbox[1] >= frame_height:  # if they are larger than image size, bbox is invalid
+                continue
+            bbox[2] = min(bbox[2], frame_width)  # right side of box
+            bbox[3] = min(bbox[3], frame_height)  # bottom of box
             # change to width and height
             bbox[2] -= bbox[0]
             bbox[3] -= bbox[1]
+            # take minimum of
             bboxes.append(bbox.astype(int))
     if not bboxes:
         bboxes = None
