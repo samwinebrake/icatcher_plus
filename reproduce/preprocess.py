@@ -16,7 +16,11 @@ import options
 import parsers
 import video
 import csv
+from face_detector import detect_face_opencv_dnn, extract_bboxes
+from face_detection import RetinaFace
 
+
+LOOKIT_CSV = "LookitPrefPhys_videos_split0_hashed_data.csv"
 
 def create_annotation_split(args, csv_name):
     """
@@ -218,7 +222,7 @@ def preprocess_raw_lookit_dataset(args):
     :return:
     """
     np.random.seed(seed=args.seed)  # seed the random generator
-    csv_file = Path(args.raw_dataset_path / "LookitPrefPhys_videos_split0_hashed_data.csv")
+    csv_file = Path(args.raw_dataset_path / LOOKIT_CSV)
     video_dataset = build_lookit_video_dataset(args.raw_dataset_path, csv_file)
     # print some stats
     with open(csv_file, 'r') as csv_fp:
@@ -296,7 +300,6 @@ def preprocess_raw_lookit_dataset(args):
     split_path = Path(args.output_folder, "saved_split")
     split_ids = [[x["video_id"] for x in train_set], [x["video_id"] for x in val_set]]
     np.savez(split_path, np.array(split_ids, dtype=object))
-    # np.savez(split_path, [[x["video_id"] for x in train_set], [x["video_id"] for x in val_set]])
     logging.info('[preprocess_raw] training set: {} validation set: {}'.format(len(train_set), len(val_set)))
     create_symbolic_links(train_set, val_set, args)
 
@@ -341,6 +344,7 @@ def preprocess_raw_marchman_dataset(args):
     else:
         raise NotImplementedError
     videos = np.array(videos)
+    logging.info("Number of videos:", len(videos))
 
     # filter out videos according to one_video_per_child_policy and train_val_disjoint
     if args.one_video_per_child_policy == "include_all":
@@ -434,34 +438,6 @@ def create_symbolic_links(train_set, val_set, args):
                 os.symlink(str(src3), str(dst3))
 
 
-def detect_face_opencv_dnn(net, frame, conf_threshold):
-    """
-    Uses a pretrained face detection model to generate facial bounding boxes,
-    with the format [x, y, width, height] where [x, y] is the lower left coord
-    :param net:
-    :param frame:
-    :param conf_threshold:
-    :return:
-    """
-    frameHeight = frame.shape[0]
-    frameWidth = frame.shape[1]
-    blob = cv2.dnn.blobFromImage(frame, 1.0, (300, 300), [104, 117, 123], False, False)
-    net.setInput(blob)
-    detections = net.forward()
-    bboxes = []
-    for i in range(detections.shape[2]):
-        confidence = detections[0, 0, i, 2]
-        if confidence > conf_threshold:
-            x1 = max(int(detections[0, 0, i, 3] * frameWidth), 0)  # left side of box
-            y1 = max(int(detections[0, 0, i, 4] * frameHeight), 0)  # top side of box
-            if x1 >= frameWidth or y1 >= frameHeight:  # if they are larger than image size, bbox is invalid
-                continue
-            x2 = min(int(detections[0, 0, i, 5] * frameWidth), frameWidth)  # either right side of box or frame width
-            y2 = min(int(detections[0, 0, i, 6] * frameHeight), frameHeight)  # either the bottom side of box of frame height
-            bboxes.append([x1, y1, x2-x1, y2-y1])  # (left, top, width, height)
-    return bboxes
-
-
 def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False):
     """
     process the dataset using the "lowest" face mechanism
@@ -476,7 +452,13 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
     """
     classes = {"away": 0, "left": 1, "right": 2}
     video_list = sorted(list(args.video_folder.glob("*")))
-    net = cv2.dnn.readNetFromCaffe(str(args.config_file), str(args.face_model_file))
+    # TODO: allow for training w/ retina face as well
+    if args.fd_model == "retinaface":
+        face_detector_model = RetinaFace(gpu_id=args.gpu_id, model_path=args.face_model_file, network=args.network)
+    elif args.fd_model == "opencv_dnn":
+        net = cv2.dnn.readNetFromCaffe(str(args.config_file), str(args.face_model_file))
+    else:
+        raise NotImplementedError
     for video_file in video_list:
         st_time = time.time()
         logging.info("[process_lkt_legacy] Proccessing %s" % video_file.name)
@@ -517,7 +499,7 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                                        args.raw_dataset_type,
                                        first_coder=True)
         elif args.raw_dataset_type == "lookit":
-            csv_file = Path(args.raw_dataset_path / "LookitPrefPhys_videos_split0_hashed_data.csv")
+            csv_file = Path(args.raw_dataset_path / LOOKIT_CSV)
             parser = parsers.LookitParser(fps,
                                           csv_file,
                                           first_coder=True,
@@ -543,7 +525,15 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                         assert gaze_class in classes
                         gaze_labels.append(classes[gaze_class])
                         if not gaze_labels_only:
-                            bbox = detect_face_opencv_dnn(net, frame, args.face_detector_confidence)
+                            # TODO: talk to Khaled about if parallelization is needed here... otherwise can do as implemented currently
+                            if args.fd_model == "retinaface":
+                                faces = face_detector_model(frame)
+                                faces = [face for face in faces if face[-1] >= args.retinaface_confidence]
+                                bbox = extract_bboxes(faces)
+                            elif args.fd_model == "opencv_dnn":
+                                bbox = detect_face_opencv_dnn(net, frame, args.face_detector_confidence)
+                            else:
+                                raise NotImplementedError
                             if not bbox:
                                 no_face_counter += 1
                                 face_labels.append(-2)
@@ -579,13 +569,12 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                                         'face_height': face_height,
                                         'face_width': face_width
                                     }
-                                    if len(resized_img) != 0:
-                                        img_filename = img_folder / f'{frame_counter:05d}_{i:01d}.png'
-                                        if not img_filename.is_file() or force_create:
-                                            cv2.imwrite(str(img_filename), resized_img)
-                                        box_filename = box_folder / f'{frame_counter:05d}_{i:01d}.npy'
-                                        if not box_filename.is_file() or force_create:
-                                            np.save(str(box_filename), feature_dict)
+                                    img_filename = img_folder / f'{frame_counter:05d}_{i:01d}.png'
+                                    if not img_filename.is_file() or force_create:
+                                        cv2.imwrite(str(img_filename), resized_img)
+                                    box_filename = box_folder / f'{frame_counter:05d}_{i:01d}.npy'
+                                    if not box_filename.is_file() or force_create:
+                                        np.save(str(box_filename), feature_dict)
                                 valid_counter += 1
                                 face_labels.append(selected_face)
                                 # logging.info(f"valid frame in class {gaze_class}")
@@ -663,7 +652,7 @@ def generate_second_gaze_labels(args, force_create=False, visualize_confusion=Fa
                                            args.raw_dataset_type,
                                            first_coder=False)
             elif args.raw_dataset_type == "lookit":
-                csv_file = Path(args.raw_dataset_path / "LookitPrefPhys_videos_split0_hashed_data.csv")
+                csv_file = Path(args.raw_dataset_path / LOOKIT_CSV)
                 parser = parsers.LookitParser(fps,
                                               csv_file,
                                               first_coder=False,
@@ -925,6 +914,7 @@ if __name__ == "__main__":
     else:
         logging.basicConfig(level=args.verbosity.upper())
 
+    logging.info("Device: " + ("cuda:0" if torch.cuda.is_available() else "cpu"))
     if args.raw_dataset_type == "lookit":
         preprocess_raw_lookit_dataset(args)
     elif args.raw_dataset_type == "cali-bw" or args.raw_dataset_type == "senegal":
