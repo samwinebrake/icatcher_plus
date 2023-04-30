@@ -781,7 +781,7 @@ def process_dataset_face_classifier(args, force_create=False):
     """
     # emulate command line arguments
     class Args:
-        def __init__(self):
+        def __init__(self, model="vgg16"):
             self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
             self.rotation = False
             self.cropping = False
@@ -790,10 +790,10 @@ def process_dataset_face_classifier(args, force_create=False):
             self.color = False
             self.erasing = False
             self.noise = False
-            self.model = "vgg16"
+            self.model = model
             self.dropout = 0.0
 
-    fc_args = Args()
+    fc_args = Args(args.fc_model_arch)
     model, input_size = face_classifier.fc_model.init_face_classifier(fc_args,
                                                                       model_name=fc_args.model,
                                                                       num_classes=2,

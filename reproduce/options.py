@@ -264,6 +264,7 @@ def parse_arguments_for_preprocess():
     parser.add_argument("--raw_dataset_type", type=str, choices=["lookit", "cali-bw", "senegal", "generic"], default="lookit",
                         help="the type of dataset to preprocess")
     parser.add_argument("--fc_model", type=str, default="models/face_classifier_weights_best.pt", help="path to face classifier model if it was trained")
+    parser.add_argument("--fc_model_arch", default="vgg16", type=str, help="face classifier model architecture")
     parser.add_argument("--pre_split", type=str, help="path to pre_split file that encodes which video belongs to train and validation")
     parser.add_argument("--split_type", type=str, choices=["split0_train", "split0_test", "all"], default="split0_train")
     parser.add_argument("--one_video_per_child_policy", choices=["include_all", "unique_only", "unique_only_in_val", "unique_only_in_train"], type=str,
