@@ -110,8 +110,9 @@ class FaceRec:
         faces = self.convert_bounding_boxes(bbox)
         face_encodings = face_recognition.face_encodings(frame, known_face_locations=faces)
 
-        matches = face_recognition.compare_faces(self.known_faces, face_encodings)
+        matches = face_recognition.compare_faces(self.known_faces, np.array(face_encodings))
 
+        selected_face, face = 0, bbox[0]
         for i in range(len(matches)):
             if matches[i] == True:
                 selected_face = i

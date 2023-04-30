@@ -21,7 +21,7 @@ from face_detection import RetinaFace
 from face_rec import FaceRec
 
 
-LOOKIT_CSV = "LookitPrefPhys_videos_split0_hashed_data.csv"
+LOOKIT_CSV = "Lookit_split0_participants_hashed.csv"
 
 def create_annotation_split(args, csv_name):
     """
@@ -544,7 +544,7 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                             else:
                                 # select lowest face, probably belongs to kid: face = min(bbox, key=lambda x: x[3] - x[1])
                                 selected_face = 0
-                                if args.use_facerec and fr.known_faces > 0:
+                                if args.use_facerec and len(fr.known_faces) > 0:
                                     selected_face, feature_dict, resized_img = fr.select_face_preprocessing(bbox, frame)
 
                                 else:
@@ -584,7 +584,7 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                                         np.save(str(box_filename), feature_dict)
                                 valid_counter += 1
                                 face_labels.append(selected_face)
-                                if args.use_facerec and fr.known_faces == 0:
+                                if args.use_facerec and len(fr.known_faces) == 0:
                                     new_bbox = fr.convert_bounding_boxes([bbox[selected_face]])
                                     fr.generate_ref_image(new_bbox[0], frame)
                                 # logging.info(f"valid frame in class {gaze_class}")
@@ -919,7 +919,7 @@ def preprocess_raw_generic_dataset(args, force_create=False):
 if __name__ == "__main__":
     args = options.parse_arguments_for_preprocess()
     if args.log:
-        args.log.parent.mkdir(parents=True, exist_ok=True)
+        Path(args.log).parent.mkdir(parents=True, exist_ok=True)
         logging.basicConfig(filename=args.log, filemode='w', level=args.verbosity.upper())
     else:
         logging.basicConfig(level=args.verbosity.upper())
