@@ -499,6 +499,7 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
 
         responses, start, end = parser.parse(video_file.stem)
         ret_val, frame = cap.read()
+        frame_height, frame_width = frame.shape[0], frame.shape[1]
         while ret_val:
             if responses:
                 logging.info("[process_lkt_legacy] Processing frame: {}".format(frame_counter))
@@ -515,11 +516,10 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                         assert gaze_class in classes
                         gaze_labels.append(classes[gaze_class])
                         if not gaze_labels_only:
-                            # TODO: talk to Khaled about if parallelization is needed here... otherwise can do as implemented currently
                             if args.fd_model == "retinaface":
                                 faces = face_detector_model(frame)
                                 faces = [face for face in faces if face[-1] >= args.retinaface_confidence]
-                                bbox = extract_bboxes(faces)
+                                bbox = extract_bboxes(faces, frame_height, frame_width)
                             elif args.fd_model == "opencv_dnn":
                                 bbox = detect_face_opencv_dnn(net, frame, args.face_detector_confidence)
                             else:
