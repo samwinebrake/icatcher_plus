@@ -465,7 +465,7 @@ def predict_from_video(opt):
         last_class_text = ""  # Initialize so that we see the first class assignment as an event to record
 
         # if going to use cpu parallelization, don't allow for live stream video
-        if use_cpu and opt.fd_model == "retinaface":  # TODO: add output timing feature to show fps processing
+        if use_cpu and opt.fd_model == "retinaface":
             # figure out how many cpus can be used
             num_cpus = mp.cpu_count() - opt.num_cpus_saved
             assert num_cpus > 0
@@ -474,12 +474,13 @@ def predict_from_video(opt):
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             vid_frames = range(0, total_frames, 1 + opt.fd_skip_frames)  # adding step if frames are skipped
             processed_frames = process_frames(cap, vid_frames, h_start_at, w_start_at, w_end_at)
+            frame_height, frame_width = processed_frames[0].shape[0], processed_frames[0].shape[1]
             faces = parallelize_face_detection(processed_frames, face_detector_model, num_cpus, opt)
             del processed_frames
 
             # flatten the list and extract bounding boxes
             faces = [item for sublist in faces for item in sublist]
-            master_bboxes = [extract_bboxes(face_group) for face_group in faces]
+            master_bboxes = [extract_bboxes(face_group, frame_height, frame_width) for face_group in faces]
 
             # if frames were skipped, need to repeat binding boxes for that many skips
             if opt.fd_skip_frames > 0:
@@ -495,6 +496,7 @@ def predict_from_video(opt):
 
         # loop over frames
         ret_val, frame = cap.read()
+        frame_height, frame_width = frame.shape[0], frame.shape[1]
         while frame is not None:
             frame = frame[h_start_at:, w_start_at:w_end_at, :]  # crop x% of the video from the top
             frames.append(frame)
@@ -503,10 +505,10 @@ def predict_from_video(opt):
                 bboxes = master_bboxes[frame_count]
             elif opt.fd_model == "opencv_dnn":
                 bboxes = detect_face_opencv_dnn(face_detector_model, frame, opt.fd_confidence_threshold)
-            else:  # if using gpu, able to find face as frame is processed... don't need batch inference
+            else:  # uses retina face, if using gpu, find face as frame is processed... don't need batch inference
                 faces = face_detector_model(frame)
                 faces = [face for face in faces if face[-1] >= opt.fd_confidence_threshold]
-                bboxes = extract_bboxes(faces)
+                bboxes = extract_bboxes(faces, frame_height, frame_width)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # network was trained on RGB images.
             # if len(cv2_bboxes) > 2:
             #     visualize.temp_hook(frame, cv2_bboxes, frame_count)

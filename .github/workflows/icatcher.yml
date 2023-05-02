@@ -15,7 +15,6 @@ jobs:
       - name: Build project
         run: |
           python -m pip install ".[dev]"
-
       - name: Run tests
         run:  python -m pytest tests
         # if running out of memory in future, add markers in future

@@ -15,6 +15,7 @@ all_faces = [
     [(30, 30, 40, 40, 0.7), (40, 40, 50, 50, 0.6)]
 ]
 
+
 def test_process_frames():
     video_path = os.path.join(str(Path(__file__).parents[1]), "tests", "video_test", "test_video.mp4")
     test_cap = cv2.VideoCapture(str(video_path))
@@ -39,9 +40,10 @@ def test_retina_face(filename, num_bounding_boxes):
     face_detector_model = create_retina_model()
     with Image.open(os.path.join(str(Path(__file__).parents[1]), 'tests', 'frames_test', filename)) as img:
         img_np = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)  # changes image to mirror cv2 frame
+    frame_height, frame_width = img_np.shape[0], img_np.shape[1]
     faces = face_detector_model(img_np)
     faces = [face for face in faces if face[-1] >= 0.9]
-    bboxes = extract_bboxes(faces)
+    bboxes = extract_bboxes(faces, frame_height, frame_width)
     assert (len(bboxes) == num_bounding_boxes) if num_bounding_boxes > 0 else bboxes is None
 
 
@@ -62,6 +64,7 @@ def test_find_bboxes():
     h_start_at, w_start_at, w_end_at = 0, 0, 640
 
     processed_frames = process_frames(test_cap, test_frames, h_start_at, w_start_at, w_end_at)
+    frame_height, frame_width = processed_frames[0].shape[0], processed_frames[0].shape[1]
     face_detector_model = create_retina_model()
 
     class OptContainer:
@@ -80,7 +83,7 @@ def test_find_bboxes():
     # faces = parallelize_face_detection(face_detector=face_detector_model, frames=processed_frames,
     # num_cpus=num_cpus, opt=test_opt)
     # faces = [item for sublist in faces for item in sublist]
-    master_bboxes = [extract_bboxes(face_group) for face_group in faces]
+    master_bboxes = [extract_bboxes(face_group, frame_height, frame_width) for face_group in faces]
 
     # read in manual annotation
     ground_truth = pd.read_csv(os.path.join(str(Path(__file__).parents[1]), "tests", "video_test", "test_video_manual_annotation.csv"))
@@ -104,9 +107,10 @@ def test_extract_bboxes():
        [160.06853, 260.93158],
        [146.51126, 284.67035],
        [150.32614, 283.61874]]), 0.96128803)]
-    face_bboxes = extract_bboxes(face_group_1)
+    frame_height, frame_width = 1000, 1000
+    face_bboxes = extract_bboxes(face_group_1, frame_height, frame_width)
     assert np.array_equal(face_bboxes[0], np.array([166, 154, 110, 132])) and np.array_equal(face_bboxes[1], np.array([80, 179, 78, 125]))
 
     # testing nothing in face_group
     face_group_2 = []
-    assert extract_bboxes(face_group_2) is None
+    assert extract_bboxes(face_group_2, frame_height, frame_width) is None
