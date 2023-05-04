@@ -90,7 +90,6 @@ class FaceRec:
         :return: the cropped face and its bbox data
         """
         
-        face = None
         #encode new bounding boxes
         for bbox in bboxes:
             face_encodings = face_recognition.face_encodings(frame, known_face_locations=[bbox])[0]
