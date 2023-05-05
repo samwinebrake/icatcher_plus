@@ -529,7 +529,7 @@ def predict_from_video(opt):
                     from_tracker.append(True)
                     bboxes = [last_known_valid_bbox]
                 
-                if opt.use_facerec and last_known_valid_bbox: #Only use facerec if its ready
+                if opt.use_facerec is not None and last_known_valid_bbox is not None: #Only use facerec if its ready
                     if opt.use_facerec == "bbox" and len(fr.known_faces) == 0: #If no known faces, generate a reference image
                         logging.info("Boundind Box : {}".format(last_known_valid_bbox))
                         logging.info("Converted Bbox : {}".format(fr.convert_bounding_boxes([last_known_valid_bbox])))
