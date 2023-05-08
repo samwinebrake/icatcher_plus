@@ -82,7 +82,7 @@ class FaceRec:
             else:
                 return None
     
-    def select_face(self, bboxes, frame, tolerance=0.10):
+    def select_face(self, bboxes, frame, tolerance=0.80):
         """
         selects a correct face from candidates bbox in frame
         :param bboxes: the bounding boxes of candidates
