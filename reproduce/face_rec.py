@@ -106,8 +106,7 @@ class FaceRec:
                 
     def select_face_preprocessing(self, bbox, frame):
         
-        faces = self.convert_bounding_boxes(bbox)
-        face_encodings = face_recognition.face_encodings(frame, known_face_locations=faces)
+        face_encodings = face_recognition.face_encodings(frame, known_face_locations=bbox)
 
         matches = face_recognition.compare_faces(self.known_faces, face_encodings)
 
