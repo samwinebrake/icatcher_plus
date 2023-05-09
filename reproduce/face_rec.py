@@ -82,7 +82,7 @@ class FaceRec:
             else:
                 return None
     
-    def select_face(self, bboxes, frame, tolerance=0.10):
+    def select_face(self, bboxes, frame, tolerance=0.80):
         """
         selects a correct face from candidates bbox in frame
         :param bboxes: the bounding boxes of candidates
@@ -90,7 +90,6 @@ class FaceRec:
         :return: the cropped face and its bbox data
         """
         
-        face = None
         #encode new bounding boxes
         for bbox in bboxes:
             face_encodings = face_recognition.face_encodings(frame, known_face_locations=[bbox])[0]
@@ -107,8 +106,7 @@ class FaceRec:
                 
     def select_face_preprocessing(self, bbox, frame):
         
-        faces = self.convert_bounding_boxes(bbox)
-        face_encodings = face_recognition.face_encodings(frame, known_face_locations=faces)
+        face_encodings = face_recognition.face_encodings(frame, known_face_locations=bbox)
 
         matches = face_recognition.compare_faces(self.known_faces, np.array(face_encodings))
 
