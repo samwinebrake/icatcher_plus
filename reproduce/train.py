@@ -10,7 +10,7 @@ import torch.distributed as dist
 import numpy as np
 from pathlib import Path
 from visualize import calculate_confusion_matrix
-
+from tqdm import tqdm
 
 def train_loop(rank, args):
     """
@@ -41,7 +41,7 @@ def train_loop(rank, args):
         running_loss = 0.0
         running_corrects = 0
         num_datapoints = 0
-        for batch_index, batch in enumerate(train_dataloader.dataloader):
+        for batch_index, batch in tqdm(enumerate(train_dataloader.dataloader), total=len(train_dataloader.dataloader)):
             model.optimizer.zero_grad()
             output = model.network(batch)
             train_loss = model.loss_fn(output, batch["label"])

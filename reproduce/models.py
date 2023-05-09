@@ -2,7 +2,9 @@ import torch
 import copy
 from pathlib import Path
 import torch.nn.functional as F
-from torchvision.models.resnet import resnet18
+from torchvision.models.resnet import resnet18, ResNet18_Weights
+from torchvision.models.convnext import convnext_base, ConvNeXt_Base_Weights
+from torchvision.models import regnet_y_16gf, RegNet_Y_16GF_Weights
 from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel as DDP
 import logging
@@ -200,15 +202,17 @@ class RNNModel(torch.nn.Module):
     def __init__(self, args):
         super().__init__()
         self.args = args
-        pretrained_model = resnet18(pretrained=True)
+        # pretrained_model = resnet18(pretrained=True)
+        pretrained_model = convnext_base(weights=ConvNeXt_Base_Weights.DEFAULT)
+        # pretrained_model = regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_SWAG_E2E_V1)
         modules = list(pretrained_model.children())[:-1]      # delete the last fc layer.
         self.baseModel = torch.nn.Sequential(*modules)
-        self.fc1 = torch.nn.Linear(512, 256).to(self.args.device)
-        self.bn1 = torch.nn.BatchNorm1d(256).to(self.args.device)
+        self.fc1 = torch.nn.Linear(1024, 512).to(self.args.device)
+        self.bn1 = torch.nn.BatchNorm1d(512).to(self.args.device)
         self.dropout = torch.nn.Dropout(0.2).to(self.args.device)
-        self.fc2 = torch.nn.Linear(256, 128).to(self.args.device)
-        self.rnn = torch.nn.LSTM(128, 32).to(self.args.device)
-        self.fc3 = torch.nn.Linear(32, 3).to(self.args.device)
+        self.fc2 = torch.nn.Linear(512, 256).to(self.args.device)
+        self.rnn = torch.nn.LSTM(256, 64).to(self.args.device)
+        self.fc3 = torch.nn.Linear(64, 3).to(self.args.device)
 
     def forward(self, x):
         x = x["imgs"]
@@ -236,7 +240,10 @@ class GazeCodingModel(torch.nn.Module):
         self.args = args
         self.n = (args.sliding_window_size + 1) // args.window_stride
         self.add_box = add_box
-        self.encoder_img = resnet18(num_classes=256).to(self.args.device)
+        # self.encoder_img = resnet18(weights=ResNet18_Weights.DEFAULT).to(self.args.device)
+        self.encoder_img = regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_SWAG_E2E_V1)
+        self.encoder_img.fc = torch.nn.Linear(self.encoder_img.fc.in_features, 256).to(self.args.device)
+        
         self.encoder_box = Encoder_box().to(self.args.device)
         self.predictor = Predictor_fc(self.n, add_box).to(self.args.device)
 

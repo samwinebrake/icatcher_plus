@@ -20,6 +20,7 @@ from face_detection import RetinaFace
 import multiprocessing as mp
 from face_rec import FaceRec
 
+import csv
 
 class FPS:
     """
@@ -598,7 +599,6 @@ def predict_from_video(opt):
                         probs = torch.nn.functional.softmax(outputs, dim=1)
                         _, prediction = torch.max(outputs, 1)
                         confidence, _ = torch.max(probs, 1)
-                        print(confidence)
                         float32_conf = confidence.cpu().numpy()[0]
                         int32_pred = prediction.cpu().numpy()[0]
                     answers[loc] = int32_pred  # update answers for the middle frame
@@ -676,14 +676,15 @@ def predict_from_video(opt):
                             with open(prediction_output_file, "a", newline="") as f:
                                 f.write("{},0,{}\n".format(frame_ms, class_text))
                             last_class_text = class_text
-                logging.info(
-                    "frame: {}, class: {}, confidence: {:.02f}, cur_fps: {:.02f}".format(
-                        str(frame_count + cursor + 1),
-                        class_text,
-                        confidences[cursor],
-                        cur_fps(),
+                if (frame_count + cursor + 1) % 500 == 0:
+                    logging.info(
+                        "frame: {}, class: {}, confidence: {:.02f}, cur_fps: {:.02f}".format(
+                            str(frame_count + cursor + 1),
+                            class_text,
+                            confidences[cursor],
+                            cur_fps(),
+                        )
                     )
-                )
             ret_val, frame = cap.read()
             frame_count += 1
         # finished processing a video file, cleanup
@@ -708,4 +709,20 @@ if __name__ == "__main__":
         )
     else:
         logging.basicConfig(level=args.verbosity.upper())
+    
+    t0 = time.time()
     predict_from_video(args)
+    dt = time.time() - t0
+    with open('runtimes.csv', 'a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([
+            args.source,
+            args.fc_model, 
+            args.fc_model_arch, 
+            args.use_facerec,
+            args.fd_model,
+            args.model,
+            args.gpu_id,
+            args.fd_skip_frames,
+            str(dt),
+        ])

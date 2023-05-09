@@ -7,3 +7,7 @@ datasets/
 src/icatcher.egg-info/
 dist/
 build/
+output/
+logs/
+runs/
+test_reference_images

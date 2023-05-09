@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.utils.data as data
 from torch.utils.data.distributed import DistributedSampler
@@ -11,7 +12,7 @@ import logging
 import csv
 import visualize
 from augmentations import RandAugment
-
+from tqdm import tqdm
 
 class DataTransforms:
     def __init__(self, img_size, mean, std):
@@ -100,7 +101,7 @@ class LookItDataset(data.Dataset):
         logging.info("{}: Collecting paths for dataloader".format(self.opt.phase))
         stats = {}
         stats["video_counter"] = 0
-        for name in coding_names:
+        for name in tqdm(coding_names, desc="Loading dataset"):
             stats[name] = {}
             gaze_labels = np.load(str(Path.joinpath(dataset_folder_path, name, f'gaze_labels.npy')))
             gaze_labels_second = None
@@ -144,8 +145,14 @@ class LookItDataset(data.Dataset):
                     img_files_seg = []
                     box_files_seg = []
                     for i in range(self.opt.sliding_window_size):
-                        img_files_seg.append(f'{name}/img/{frame_number + i:05d}_{face_label_seg[i]:01d}.png')
-                        box_files_seg.append(f'{name}/box/{frame_number + i:05d}_{face_label_seg[i]:01d}.npy')
+                        img_file = f'{name}/img/{frame_number + i:05d}_{face_label_seg[i]:01d}.png'
+                        box_file = f'{name}/box/{frame_number + i:05d}_{face_label_seg[i]:01d}.npy'
+                        impath = os.path.join(self.opt.dataset_folder, "faces", img_file)
+                        if os.path.isfile(impath):
+                            img_files_seg.append(img_file)
+                            box_files_seg.append(box_file)
+                    if not len(img_files_seg) == self.opt.sliding_window_size:
+                        continue
                     img_files_seg = img_files_seg[::self.opt.window_stride]
                     box_files_seg = box_files_seg[::self.opt.window_stride]
                     my_list.append((img_files_seg, box_files_seg, class_seg))
