@@ -132,7 +132,6 @@ def parse_arguments_for_testing():
     parser.add_argument("--fd_skip_frames", type=int, default=0, help="WHEN USING CPU: amount of frames to skip between each face detection")
     parser.add_argument("--use_facerec", type=str, default=None, choices=[None, "reference", "bbox"], help="Flag to use face recognition using either a reference image or bounding box annotation")
     parser.add_argument("--facerec_ref", type=str, default=None, help="Path to annotation or reference image")
-    parser.add_argument("--facerec_tolerance", type=float, default=0.8, help="The level of tolerance for face recognition, from 0.0 to 1.0. Lower number is lower tolerance")
 
     args = parser.parse_args()
     args.model = Path(args.model)

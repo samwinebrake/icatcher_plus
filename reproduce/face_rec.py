@@ -82,7 +82,7 @@ class FaceRec:
             else:
                 return None
     
-    def select_face(self, bboxes, frame, tolerance=0.80):
+    def select_face(self, bboxes, frame):
         """
         selects a correct face from candidates bbox in frame
         :param bboxes: the bounding boxes of candidates
@@ -90,31 +90,37 @@ class FaceRec:
         :return: the cropped face and its bbox data
         """
         
+        target_distance = None
+        target_index = 0
+        
         #encode new bounding boxes
-        for bbox in bboxes:
+        for i, bbox in enumerate(bboxes):
             face_encodings = face_recognition.face_encodings(frame, known_face_locations=[bbox])[0]
             
-            #compare against faces
-            matches = face_recognition.compare_faces(
-                self.known_faces, face_encodings, tolerance=tolerance
-            )
-            print(matches)
-            if matches[0] == True:
-                return bbox
-
-        return None
-                
-    def select_face_preprocessing(self, bbox, frame):
+            distance = face_recognition.face_distance(self.known_faces, face_encodings)[0]
+            
+            if target_distance == None or distance < target_distance:
+                target_distance = distance
+                target_index = i
         
-        face_encodings = face_recognition.face_encodings(frame, known_face_locations=bbox)
+        return bboxes[target_index]
+                
+    def select_face_preprocessing(self, bboxes, frame):
+        
+        face_encodings = face_recognition.face_encodings(frame, known_face_locations=bboxes)
+        target_distance = None
+        target_index = 0
 
-        matches = face_recognition.compare_faces(self.known_faces, np.array(face_encodings))
+        for i, bbox in enumerate(bboxes):
+            face_encoding = face_recognition.face_encodings(frame, known_face_locations=[bbox])[0]
+            distance = face_recognition.face_distance(self.known_faces, face_encoding)[0]
 
-        selected_face, face = 0, bbox[0]
-        for i in range(len(matches)):
-            if matches[i] == True:
-                selected_face = i
-                face = bbox[i]
+            if target_distance == None or distance < target_distance:
+                target_distance = distance
+                target_index = i
+        
+        face = bbox[target_index]
+        selected_face = target_index
 
         crop_img = frame[face[1]:face[1] + face[3], face[0]:face[0] + face[2]]
                                         # resized_img = cv2.resize(crop_img, (100, 100))
