@@ -15,7 +15,8 @@ def get_fc_data_transforms(args, input_size, dt_key=None):
             transforms.ToTensor(),
             transforms.Resize((input_size, input_size), antialias=True),
             transforms.CenterCrop(input_size),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            transforms.Grayscale(num_output_channels=3),
         ])}
 
     class AddGaussianNoise(object):
