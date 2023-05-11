@@ -81,6 +81,7 @@ def parse_arguments_for_testing():
     parser.add_argument("--fc_model", type=str, help="path to face classifier model that will be used for deciding "
                                                      "which crop should we select from every frame")
     parser.add_argument("--fc_model_arch", default="vgg16", type=str, help="face classifier model architecture")
+    parser.add_argument("--gaze_backbone", type=str, default="resnet")
     parser.add_argument("--source_type", type=str, default="file", choices=["file", "webcam"],
                         help="selects source of stream to use.")
     parser.add_argument("--crop_percent", type=int, default=0, help="A percent to crop video frames to prevent other people from appearing")

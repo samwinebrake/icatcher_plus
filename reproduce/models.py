@@ -40,6 +40,7 @@ class MyModel:
         if self.opt.architecture == "fc":
             network = FullyConnected(self.opt)
         elif self.opt.architecture == "icatcher+":
+            model = getattr(self.opt, "gaze_backbone", "resnet")
             network = GazeCodingModel(self.opt)
         elif self.opt.architecture == "rnn":
             network = RNNModel(self.opt)
@@ -240,8 +241,12 @@ class GazeCodingModel(torch.nn.Module):
         self.args = args
         self.n = (args.sliding_window_size + 1) // args.window_stride
         self.add_box = add_box
-        # self.encoder_img = resnet18(weights=ResNet18_Weights.DEFAULT).to(self.args.device)
-        self.encoder_img = regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_SWAG_E2E_V1)
+        if args.gaze_backbone == "resnet":
+            self.encoder_img = resnet18(weights=ResNet18_Weights.DEFAULT).to(self.args.device)
+        elif args.gaze_backbone == "regnet":
+            self.encoder_img = regnet_y_16gf(weights=RegNet_Y_16GF_Weights.IMAGENET1K_SWAG_E2E_V1)
+        else:
+            raise NotImplementedError
         self.encoder_img.fc = torch.nn.Linear(self.encoder_img.fc.in_features, 256).to(self.args.device)
         
         self.encoder_box = Encoder_box().to(self.args.device)
