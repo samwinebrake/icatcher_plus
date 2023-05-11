@@ -108,7 +108,7 @@ def select_face(bboxes, frame, fc_model, fc_data_transforms, hor, ver, opt):
             bbox = bboxes[idxs[i]]
             # hor, ver = centers[i]
     else:  # select lowest face in image, probably belongs to kid
-        bbox = min(bboxes, key=lambda x: x[3] - x[1])
+        bbox = max(bboxes, key=lambda x: x[1] + x[3])
     return bbox
 
 
