@@ -12,6 +12,8 @@ class FaceRec:
     def __init__(self):
         self.ref_img_path = None
         self.known_faces = list()
+        self.moving_avg_bboxes = list()
+        self.window = 0
 
     def convert_bounding_boxes(self, bboxes):
         """
@@ -82,6 +84,20 @@ class FaceRec:
             else:
                 return None
     
+    def get_moving_avg_dist(self, frame):
+        
+        if len(self.moving_avg_bboxes) > self.window: #If there are enough bboxes to form a window
+            avg_bbox = [sum(sub_list)/len(sub_list) for sub_list in zip(*self.moving_avg_bboxes)[-(self.window):]]
+            
+        else: #Take average of available bounding boxes
+            avg_bbox = [sum(sub_list)/len(sub_list) for sub_list in zip(*self.moving_avg_bboxes)]
+
+        face_encodings = face_recognition.face_encodings(frame, known_face_locations=[avg_bbox])[0]
+            
+        distance = face_recognition.face_distance(self.known_faces, face_encodings)[0]
+        
+        return distance, avg_bbox
+
     def select_face(self, bboxes, frame):
         """
         selects a correct face from candidates bbox in frame
@@ -102,7 +118,12 @@ class FaceRec:
             if target_distance == None or distance < target_distance:
                 target_distance = distance
                 target_index = i
+
+        avg_bbox_dist, avg_bbox = self.get_moving_avg_dist(frame)
+        if avg_bbox_dist < target_distance:
+            return avg_bbox
         
+        self.moving_avg_bboxes.append(bboxes[target_index])
         return bboxes[target_index]
                 
     def select_face_preprocessing(self, bboxes, frame):
