@@ -492,6 +492,7 @@ def predict_from_video(opt):
         #Set up face recognition for use
         if opt.use_facerec != None:
             fr = FaceRec()
+            fr.window = opt.sliding_window_size
             if opt.use_facerec == "reference":
                 fr.get_ref_image(opt.facerec_ref)
 
