@@ -493,9 +493,6 @@ def predict_from_video(opt):
         #Set up face recognition for use
         if opt.use_facerec != None:
             fr = FaceRec()
-            fr.window = opt.sliding_window_size
-            if opt.use_facerec == "reference":
-                fr.get_ref_image(opt.facerec_ref)
 
         # loop over frames
         ret_val, frame = cap.read()
@@ -530,11 +527,8 @@ def predict_from_video(opt):
                     from_tracker.append(True)
                     bboxes = [last_known_valid_bbox]
                 
-                if opt.use_facerec is not None and last_known_valid_bbox is not None: #Only use facerec if its ready
-                    if opt.use_facerec == "bbox" and len(fr.known_faces) == 0: #If no known faces, generate a reference image
-                        fr.generate_ref_image(last_known_valid_bbox, frame)
-                    
-                    selected_bbox = fr.select_face(bboxes, frame)
+                if opt.use_facerec is not None: #Only use facerec if its ready
+                    selected_bbox = fr.select_face(bboxes, frame, opt)
                 else:
                     selected_bbox = select_face(bboxes, frame, face_classifier_model, face_classifier_data_transforms, hor, ver, opt)
                 

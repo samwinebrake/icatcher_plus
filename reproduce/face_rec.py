@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import face_recognition
 
 class FaceRec:
@@ -11,6 +12,7 @@ class FaceRec:
 
     def __init__(self):
         self.ref_img_path = None
+        self.selected_bbox = None
         self.known_faces = list()
         self.moving_avg_bboxes = list()
         self.window = 0
@@ -50,9 +52,26 @@ class FaceRec:
         param bbox: The bounding box that contains the user's reference image
         param frame: The frame that the bounding box is being used in
         """
+        self.selected_bbox = bbox
         self.known_faces.append(
             face_recognition.face_encodings(frame, known_face_locations=[bbox])[0]
         )
+
+
+    def replace_generated_ref(self, bbox, frame):
+        cur_top = self.selected_bbox[0]
+        cur_left = self.selected_bbox[1]
+        cur_bot = self.selected_bbox[2]
+        cur_right = self.selected_bbox[3]
+
+        new_top = bbox[0]
+        new_bot = bbox[2]
+
+        if new_top < cur_top and new_bot < cur_bot:
+            self.selected_bbox = bbox
+            self.known_faces = list()
+            print("Swapping reference")
+            self.known_faces.append(face_recognition.face_encodings(frame, known_face_locations=[bbox])[0])
 
     def facerec_check(self, frame, device="cpu"):
         face_locations = []
@@ -91,14 +110,41 @@ class FaceRec:
             
         else: #Take average of available bounding boxes
             avg_bbox = [sum(sub_list)/len(sub_list) for sub_list in zip(*self.moving_avg_bboxes)]
-
+        
+        avg_bbox = list(map(int, avg_bbox))
+        
         face_encodings = face_recognition.face_encodings(frame, known_face_locations=[avg_bbox])[0]
             
         distance = face_recognition.face_distance(self.known_faces, face_encodings)[0]
         
         return distance, avg_bbox
 
-    def select_face(self, bboxes, frame):
+    def get_window_distances(self, current_bbox):
+        distances = None
+        if len(self.moving_avg_bboxes) == 0:
+            return None
+
+        current_bbox_center = self.get_bbox_center(current_bbox)
+        
+        center = self.get_bbox_center(self.moving_avg_bboxes[-1])
+        distance = math.dist(current_bbox_center, center)
+
+        return distance
+
+    def get_bbox_center(self, bbox):
+        x_center = bbox[0] + int((bbox[2]-bbox[0])/2)
+        y_center = bbox[1] + int((bbox[3]-bbox[1])/2)
+        return (x_center, y_center)
+
+    def get_bbox_area(self, bbox):
+        cur_top = bbox[0]
+        cur_left = bbox[1]
+        w  = bbox[2]
+        h = bbox[3]
+
+        return w * h
+
+    def select_face(self, bboxes, frame, opt):
         """
         selects a correct face from candidates bbox in frame
         :param bboxes: the bounding boxes of candidates
@@ -108,20 +154,41 @@ class FaceRec:
         
         target_distance = None
         target_index = 0
-        
+        feature_distances = list()
+
+        if opt.use_facerec == "reference" and len(self.known_faces) == 0:
+                fr.get_ref_image(opt.facerec_ref)
+
         #encode new bounding boxes
         for i, bbox in enumerate(bboxes):
-            face_encodings = face_recognition.face_encodings(frame, known_face_locations=[bbox])[0]
+            area = self.get_bbox_area(bbox)
+            if area < 1000:
+                if len(bboxes) == 1:
+                    return None
+                continue
+            if area > 1000: #Ensures that bounding box is not a reflection based on its area
+                print(area)
+                if opt.use_facerec == "bbox" and len(self.known_faces) == 0: #If no known faces, generate a reference image
+                    self.generate_ref_image(bbox, frame)
             
-            distance = face_recognition.face_distance(self.known_faces, face_encodings)[0]
+                distance = self.get_window_distances(bbox)
             
-            if target_distance == None or distance < target_distance:
-                target_distance = distance
-                target_index = i
+                if distance is None or distance < 1.0:
+                 #if len(self.selected_bbox) > 0:
+                  #  self.replace_generated_ref(bbox, frame)
+                    face_encodings = face_recognition.face_encodings(frame, known_face_locations=[bbox])[0]
 
-        avg_bbox_dist, avg_bbox = self.get_moving_avg_dist(frame)
-        if avg_bbox_dist < target_distance:
-            return avg_bbox
+                    feature_distance = face_recognition.face_distance(self.known_faces, face_encodings)[0]
+                    feature_distances.append(feature_distance)
+ 
+                    if target_distance == None or feature_distance < target_distance:
+                        target_distance = feature_distance
+                        print(target_distance)
+                        target_index = i
+
+        if len(self.known_faces) == 0 or (target_distance is not None and target_distance > 0.45) or target_index == None:
+            print("Returning None")
+            return None
         
         self.moving_avg_bboxes.append(bboxes[target_index])
         return bboxes[target_index]
