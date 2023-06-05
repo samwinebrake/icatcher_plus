@@ -59,6 +59,7 @@ def parse_arguments_for_training():
     parser.add_argument("--log", action="store_true", help="Logs into a file instead of stdout")
     parser.add_argument("-v", "--verbosity", type=str, choices=["debug", "info", "warning"], default="info",
                         help="Selects verbosity level")
+    parser.add_argument("--eval_only", action="store_true", help="Only run evaluation pipeline (Equivalent to running training for 0 epochs)")
     args = parser.parse_args()
     args.dataset_folder = Path(args.dataset_folder)
     # add some useful arguments for the rest of the code
@@ -79,6 +80,8 @@ def parse_arguments_for_testing():
     parser.add_argument("model", type=str, help="path to model that will be used for predictions")
     parser.add_argument("--fc_model", type=str, help="path to face classifier model that will be used for deciding "
                                                      "which crop should we select from every frame")
+    parser.add_argument("--fc_model_arch", default="vgg16", type=str, help="face classifier model architecture")
+    parser.add_argument("--gaze_backbone", type=str, default="resnet")
     parser.add_argument("--source_type", type=str, default="file", choices=["file", "webcam"],
                         help="selects source of stream to use.")
     parser.add_argument("--crop_percent", type=int, default=0, help="A percent to crop video frames to prevent other people from appearing")
@@ -129,6 +132,7 @@ def parse_arguments_for_testing():
     parser.add_argument("--fd_skip_frames", type=int, default=0, help="WHEN USING CPU: amount of frames to skip between each face detection")
     parser.add_argument("--use_facerec", type=str, default=None, choices=[None, "reference", "bbox"], help="Flag to use face recognition using either a reference image or bounding box annotation")
     parser.add_argument("--facerec_ref", type=str, default=None, help="Path to annotation or reference image")
+    parser.add_argument("--input_json", type=str, default=None, help="Path to JSON containing annotation data for a target")
 
     args = parser.parse_args()
     args.model = Path(args.model)
@@ -262,6 +266,7 @@ def parse_arguments_for_preprocess():
     parser.add_argument("--raw_dataset_type", type=str, choices=["lookit", "cali-bw", "senegal", "generic"], default="lookit",
                         help="the type of dataset to preprocess")
     parser.add_argument("--fc_model", type=str, default="models/face_classifier_weights_best.pt", help="path to face classifier model if it was trained")
+    parser.add_argument("--fc_model_arch", default="vgg16", type=str, help="face classifier model architecture")
     parser.add_argument("--pre_split", type=str, help="path to pre_split file that encodes which video belongs to train and validation")
     parser.add_argument("--split_type", type=str, choices=["split0_train", "split0_test", "all"], default="split0_train")
     parser.add_argument("--one_video_per_child_policy", choices=["include_all", "unique_only", "unique_only_in_val", "unique_only_in_train"], type=str,
@@ -275,8 +280,9 @@ def parse_arguments_for_preprocess():
     parser.add_argument("--seed", type=int, default=43, help="random seed (controls split selection)")
     parser.add_argument("-v", "--verbosity", type=str, choices=["debug", "info", "warning"], default="info",
                         help="Selects verbosity level")
-    parser.add_argument("--fd_model", type=str, choices=["retinaface, opencv_dnn"], default="retinaface",
+    parser.add_argument("--fd_model", type=str, choices=["retinaface", "opencv_dnn"], default="retinaface",
                         help="the face detector model used. opencv_dnn may be more suitable for cpu usage if speed is priority over accuracy")
+    parser.add_argument("--use_facerec", type=str, default=None, choices=[None, "reference", "bbox"], help="Flag to use face recognition using either a reference image or bounding box annotation")
     args = parser.parse_args()
     args.raw_dataset_path = Path(args.raw_dataset_path)
     if not args.raw_dataset_path.is_dir():
