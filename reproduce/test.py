@@ -394,6 +394,32 @@ def cleanup(video_output_file, prediction_output_file, answers, confidences, fra
     cap.release()
 
 
+def generate_reference_from_json(input_json):
+    """
+    Generate the bounding box from the input JSON
+    :parameter input_json: 
+    return
+    """
+    path = input_json
+    if '/' in path:
+        path = path.split('/')[-1]
+    
+
+def process_json_input(input_json, video_name):
+    """
+    Given a video name, look for the associated JSON if the flag is set.
+    :param input_json:
+    :param video_name:
+    """
+    path = input_json
+    if path.is_dir():
+        for json_path in Path(path).iterdir():
+            if json_path.is_file() and json_path.suffix == '.json' and video_name.split('.')[0] in json_path:
+                generate_reference_from_json(json_path)
+    elif path.is_file() and path.suffix == '.json' and video_name.split('.')[0] in path:
+        generate_reference_from_json(path)
+        
+
 def predict_from_video(opt):
     """
     perform prediction on a stream or video file(s) using a network.
@@ -493,8 +519,6 @@ def predict_from_video(opt):
         #Set up face recognition for use
         if opt.use_facerec != None:
             fr = FaceRec()
-            if opt.facerec == "reference":
-                fr.get_ref_image(opt.facerec_ref)
 
         # loop over frames
         ret_val, frame = cap.read()
@@ -529,11 +553,8 @@ def predict_from_video(opt):
                     from_tracker.append(True)
                     bboxes = [last_known_valid_bbox]
                 
-                if opt.use_facerec and last_known_valid_bbox: #Only use facerec if its ready
-                    if opt.facerec == "bbox" and len(fr.known_faces) == 0: #If no known faces, generate a reference image
-                        
-                        fr.generate_ref_image(fr.convert_bounding_boxes([last_known_valid_bbox]), frame)
-                    selected_bbox = fr.select_face(bboxes, frame)
+                if opt.use_facerec is not None: #Only use facerec if its ready
+                    selected_bbox = fr.select_face(bboxes, frame, opt)
                 else:
                     selected_bbox = select_face(bboxes, frame, face_classifier_model, face_classifier_data_transforms, hor, ver, opt)
                 

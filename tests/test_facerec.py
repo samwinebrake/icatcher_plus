@@ -118,6 +118,6 @@ def test_face_selection():
 
     bbox = fr.facerec_check(test_img)
 
-    selected_bbox = fr.select_face([bbox], test_img, tolerance=0.9)
+    selected_bbox = fr.select_face([bbox], test_img)
 
     assert bbox == selected_bbox
