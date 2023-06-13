@@ -73,10 +73,10 @@ def parse_arguments_for_training():
     return args
 
 
-def parse_arguments_for_testing():
+def parse_arguments_for_testing(manual_args = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=str, help="the source to use (path to video file, folder or webcam id)")
-    parser.add_argument("model", type=str, help="path to model that will be used for predictions")
+    parser.add_argument("model", type=str, default="models/regnet_gaze.pth", help="path to model that will be used for predictions")
     parser.add_argument("--fc_model", type=str, help="path to face classifier model that will be used for deciding "
                                                      "which crop should we select from every frame")
     parser.add_argument("--source_type", type=str, default="file", choices=["file", "webcam"],
@@ -130,7 +130,7 @@ def parse_arguments_for_testing():
     parser.add_argument("--use_facerec", type=str, default=None, choices=[None, "reference", "bbox"], help="Flag to use face recognition using either a reference image or bounding box annotation")
     parser.add_argument("--facerec_ref", type=str, default=None, help="Path to annotation or reference image")
 
-    args = parser.parse_args()
+    args = parser.parse_args(manual_args)
     args.model = Path(args.model)
     if not args.model.is_file():
         raise FileNotFoundError("Model file not found")

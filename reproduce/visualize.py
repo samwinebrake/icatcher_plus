@@ -16,7 +16,6 @@ from matplotlib.patches import Patch
 from options import parse_arguments_for_visualizations
 import parsers
 import preprocess
-from statistics.bootstrap import bootstrap, t_test, t_test_paired
 import warnings
 
 
@@ -2263,6 +2262,7 @@ def print_stats(sorted_ids, all_metrics, hvm, args):
 
 
 if __name__ == "__main__":
+    from statistics.bootstrap import bootstrap, t_test, t_test_paired
     args = parse_arguments_for_visualizations()
     if args.log:
         args.log.parent.mkdir(parents=True, exist_ok=True)
