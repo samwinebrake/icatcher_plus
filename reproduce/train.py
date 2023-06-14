@@ -49,12 +49,21 @@ def train_loop(rank, args):
             model.optimizer.step()
             train_loss_np = train_loss.cpu().detach().numpy()
             correct = torch.sum(torch.eq(predictions, batch["label"])).item()
-            my_logger.write_scaler("batch", "train_loss", train_loss_np, epoch*(len(train_dataloader.dataloader)) + batch_index)
-            logging.info("train: epoch: {}, batch {} / {}, loss: {}, acc: {}".format(epoch,
-                                                                                     batch_index,
-                                                                                     len(train_dataloader.dataloader),
-                                                                                     train_loss_np,
-                                                                                     (correct / batch["label"].shape[0]) * 100))
+            my_logger.write_scaler(
+                "batch",
+                "train_loss",
+                train_loss_np,
+                epoch * (len(train_dataloader.dataloader)) + batch_index,
+            )
+            logging.info(
+                "train: epoch: {}, batch {} / {}, loss: {}, acc: {}".format(
+                    epoch,
+                    batch_index,
+                    len(train_dataloader.dataloader),
+                    train_loss_np,
+                    (correct / batch["label"].shape[0]) * 100,
+                )
+            )
             num_datapoints += batch["label"].shape[0]
             running_loss += train_loss.item() * batch["label"].shape[0]
             running_corrects += torch.sum(torch.eq(predictions, batch["label"])).item()
@@ -62,11 +71,9 @@ def train_loop(rank, args):
         epoch_acc = (running_corrects / num_datapoints) * 100
         my_logger.write_scaler("epoch", "train_loss", epoch_loss, epoch)
         my_logger.write_scaler("epoch", "train_acc", epoch_acc, epoch)
-        logging.info("train: epoch: {}, training loss: {}".format(epoch,
-                                                                  epoch_loss))
-        logging.info("train: epoch: {}, training acc: {}".format(epoch,
-                                                                 epoch_acc))
-        val_loss_total = 0.
+        logging.info("train: epoch: {}, training loss: {}".format(epoch, epoch_loss))
+        logging.info("train: epoch: {}, training acc: {}".format(epoch, epoch_acc))
+        val_loss_total = 0.0
         if args.rank == 0:
             model.save_network(which_epoch=str(epoch))
             model.save_network(which_epoch="latest")
@@ -84,17 +91,27 @@ def train_loop(rank, args):
                     _, predictions = torch.max(output, 1)
                     num_datapoints += batch["label"].shape[0]
                     running_loss += val_loss.item() * batch["label"].shape[0]
-                    running_corrects += torch.sum(torch.eq(predictions, batch["label"])).item()
-                    logging.info("val: batch {} / {}".format(batch_index, len(val_dataloader.dataloader)))
+                    running_corrects += torch.sum(
+                        torch.eq(predictions, batch["label"])
+                    ).item()
+                    logging.info(
+                        "val: batch {} / {}".format(
+                            batch_index, len(val_dataloader.dataloader)
+                        )
+                    )
             model.network.train(mode=True)
             val_loss_total = running_loss / num_datapoints
             val_acc_total = (running_corrects / num_datapoints) * 100
             my_logger.write_scaler("epoch", "val_loss", val_loss_total, epoch)
             my_logger.write_scaler("epoch", "val_acc", val_acc_total, epoch)
-            logging.info("validation: epoch: {}, loss: {}".format(epoch, val_loss_total))
+            logging.info(
+                "validation: epoch: {}, loss: {}".format(epoch, val_loss_total)
+            )
             logging.info("validation: epoch: {}, acc: {}".format(epoch, val_acc_total))
-            my_logger.write_scaler("epoch", "learning rate", model.optimizer.param_groups[0]['lr'], epoch)
-            logging.info("lr: {}".format(model.optimizer.param_groups[0]['lr']))
+            my_logger.write_scaler(
+                "epoch", "learning rate", model.optimizer.param_groups[0]["lr"], epoch
+            )
+            logging.info("lr: {}".format(model.optimizer.param_groups[0]["lr"]))
         if args.lr_policy == "plateau":
             if args.distributed:
                 val_loss_total = torch.Tensor([val_loss_total]).to(args.rank)
@@ -110,14 +127,18 @@ def setup(args):
     if args.rank == 0:  # setup logging
         if args.log:
             logging_file = Path(args.experiment_path, "log")
-            logging.basicConfig(filename=str(logging_file), filemode='w', level=args.verbosity.upper())
+            logging.basicConfig(
+                filename=str(logging_file), filemode="w", level=args.verbosity.upper()
+            )
         else:
             logging.basicConfig(level=args.verbosity.upper())
     if args.distributed:
-        os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = args.port
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = args.port
         # initialize the process group
-        dist.init_process_group("nccl", rank=args.rank, world_size=args.world_size)  # gloo / nccl
+        dist.init_process_group(
+            "nccl", rank=args.rank, world_size=args.world_size
+        )  # gloo / nccl
     torch.cuda.manual_seed_all(args.seed)
     np.random.seed(args.seed)
 
@@ -143,7 +164,9 @@ def predict_on_preprocessed(args):
         running_corrects = 0
         num_datapoints = 0
         for i, batch in enumerate(val_dataset):
-            logging.info("batch: {} / {}".format(i, len(val_dataset) // args.batch_size))
+            logging.info(
+                "batch: {} / {}".format(i, len(val_dataset) // args.batch_size)
+            )
             output = model.network(batch)
             # val_loss = model.loss_fn(output, batch["label"])
             _, predictions = torch.max(output, 1)
@@ -152,9 +175,12 @@ def predict_on_preprocessed(args):
             num_datapoints += batch["label"].shape[0]
             # running_loss += val_loss.item() * batch["label"].shape[0]
             running_corrects += torch.sum(torch.eq(predictions, batch["label"])).item()
-    norm_mat, mat, total_acc = calculate_confusion_matrix(None, None,
-                                                          Path(args.experiment_path, "confusion_matrix_{}.png".format(args.use_disjoint)),
-                                                          confusion_matrix.numpy())
+    norm_mat, mat, total_acc = calculate_confusion_matrix(
+        None,
+        None,
+        Path(args.experiment_path, "confusion_matrix_{}.png".format(args.use_disjoint)),
+        confusion_matrix.numpy(),
+    )
     # val_loss_total = running_loss / num_datapoints
     val_acc_total = (running_corrects / num_datapoints) * 100
     # logging.info("validation loss: {}".format(val_loss_total))
@@ -166,9 +192,6 @@ def predict_on_preprocessed(args):
 if __name__ == "__main__":
     args = options.parse_arguments_for_training()
     if args.distributed:
-        mp.spawn(train_loop,
-                 args=(args,),
-                 nprocs=args.world_size,
-                 join=True)
+        mp.spawn(train_loop, args=(args,), nprocs=args.world_size, join=True)
     else:
         train_loop(0, args)

@@ -15,7 +15,13 @@ import video
 import time
 import collections
 from parsers import parse_illegal_transitions_file
-from face_detector import extract_bboxes, process_frames, parallelize_face_detection, detect_face_opencv_dnn, create_retina_model
+from face_detector import (
+    extract_bboxes,
+    process_frames,
+    parallelize_face_detection,
+    detect_face_opencv_dnn,
+    create_retina_model,
+)
 from face_detection import RetinaFace
 import multiprocessing as mp
 from face_rec import FaceRec
@@ -112,7 +118,9 @@ def select_face(bboxes, frame, fc_model, fc_data_transforms, hor, ver, opt):
     return bbox
 
 
-def fix_illegal_transitions(loc, answers, confidences, illegal_transitions, corrected_transitions):
+def fix_illegal_transitions(
+    loc, answers, confidences, illegal_transitions, corrected_transitions
+):
     """
     this method fixes illegal transitions happening in answers at [loc-max_trans_len+1, loc] inclusive
     """
@@ -229,12 +237,16 @@ def load_models(opt):
     :param opt: command line options
     :return all nn models
     """
-    if opt.fd_model == "retinaface":  # option for retina face vs. previous opencv dnn model
+    if (
+        opt.fd_model == "retinaface"
+    ):  # option for retina face vs. previous opencv dnn model
         face_detector_model = create_retina_model(gpu_id=opt.gpu_id)
     elif opt.fd_model == "opencv_dnn":
         face_detector_model_file = Path("models", "face_model.caffemodel")
         config_file = Path("models", "config.prototxt")
-        face_detector_model = cv2.dnn.readNetFromCaffe(str(config_file), str(face_detector_model_file))
+        face_detector_model = cv2.dnn.readNetFromCaffe(
+            str(config_file), str(face_detector_model_file)
+        )
     else:
         raise NotImplementedError
     path_to_gaze_model = opt.model
@@ -279,7 +291,13 @@ def load_models(opt):
     else:
         face_classifier_model = None
         face_classifier_data_transforms = None
-    return gaze_model, face_detector_model, face_classifier_model, face_classifier_data_transforms
+    return (
+        gaze_model,
+        face_detector_model,
+        face_classifier_model,
+        face_classifier_data_transforms,
+    )
+
 
 def get_video_paths(opt):
     """
@@ -378,7 +396,16 @@ def create_output_streams(video_path, framerate, resolution, video_ids, opt):
     return video_output_file, prediction_output_file, skip
 
 
-def cleanup(video_output_file, prediction_output_file, answers, confidences, framerate, frame_count, cap, opt):
+def cleanup(
+    video_output_file,
+    prediction_output_file,
+    answers,
+    confidences,
+    framerate,
+    frame_count,
+    cap,
+    opt,
+):
     if opt.show_output:
         cv2.destroyAllWindows()
     if opt.output_video_path:
@@ -432,7 +459,9 @@ def predict_from_video(opt):
         )
         cursor -= max_illegal_transition_length
         if abs(cursor) > opt.sliding_window_size:
-            raise ValueError("illegal_transitions_path contains transitions longer than the sliding window size")
+            raise ValueError(
+                "illegal_transitions_path contains transitions longer than the sliding window size"
+            )
     # check if cpu or gpu being used
     use_cpu = True if opt.gpu_id == -1 else False
     # loop over inputs
@@ -468,16 +497,24 @@ def predict_from_video(opt):
         last_class_text = ""  # Initialize so that we see the first class assignment as an event to record
 
         # if going to use cpu parallelization, don't allow for live stream video
-        if use_cpu and opt.fd_model == "retinaface":  # TODO: add output timing feature to show fps processing
+        if (
+            use_cpu and opt.fd_model == "retinaface"
+        ):  # TODO: add output timing feature to show fps processing
             # figure out how many cpus can be used
             num_cpus = mp.cpu_count() - opt.num_cpus_saved
             assert num_cpus > 0
 
             # send all frames in to be preprocessed and have faces detected prior to running gaze detection
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            vid_frames = range(0, total_frames, 1 + opt.fd_skip_frames)  # adding step if frames are skipped
-            processed_frames = process_frames(cap, vid_frames, h_start_at, w_start_at, w_end_at)
-            faces = parallelize_face_detection(processed_frames, face_detector_model, num_cpus, opt)
+            vid_frames = range(
+                0, total_frames, 1 + opt.fd_skip_frames
+            )  # adding step if frames are skipped
+            processed_frames = process_frames(
+                cap, vid_frames, h_start_at, w_start_at, w_end_at
+            )
+            faces = parallelize_face_detection(
+                processed_frames, face_detector_model, num_cpus, opt
+            )
             del processed_frames
 
             # flatten the list and extract bounding boxes
@@ -490,7 +527,7 @@ def predict_from_video(opt):
 
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # reset frames to 0
 
-        #Set up face recognition for use
+        # Set up face recognition for use
         if opt.use_facerec != None:
             fr = FaceRec()
             if opt.facerec == "reference":
@@ -499,22 +536,34 @@ def predict_from_video(opt):
         # loop over frames
         ret_val, frame = cap.read()
         while frame is not None:
-            frame = frame[h_start_at:, w_start_at:w_end_at, :]  # crop x% of the video from the top
+            frame = frame[
+                h_start_at:, w_start_at:w_end_at, :
+            ]  # crop x% of the video from the top
             frames.append(frame)
 
-            if use_cpu and opt.fd_model == "retinaface":  # if using cpu, just pull from master
+            if (
+                use_cpu and opt.fd_model == "retinaface"
+            ):  # if using cpu, just pull from master
                 bboxes = master_bboxes[frame_count]
             elif opt.fd_model == "opencv_dnn":
-                bboxes = detect_face_opencv_dnn(face_detector_model, frame, opt.fd_confidence_threshold)
+                bboxes = detect_face_opencv_dnn(
+                    face_detector_model, frame, opt.fd_confidence_threshold
+                )
             else:  # if using gpu, able to find face as frame is processed... don't need batch inference
                 faces = face_detector_model(frame)
-                faces = [face for face in faces if face[-1] >= opt.fd_confidence_threshold]
+                faces = [
+                    face for face in faces if face[-1] >= opt.fd_confidence_threshold
+                ]
                 bboxes = extract_bboxes(faces)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # network was trained on RGB images.
+            frame = cv2.cvtColor(
+                frame, cv2.COLOR_BGR2RGB
+            )  # network was trained on RGB images.
             # if len(cv2_bboxes) > 2:
             #     visualize.temp_hook(frame, cv2_bboxes, frame_count)
             if not bboxes and (last_known_valid_bbox is None or not opt.track_face):
-                answers.append(classes['noface'])  # if face detector fails, treat as away and mark invalid
+                answers.append(
+                    classes["noface"]
+                )  # if face detector fails, treat as away and mark invalid
                 confidences.append(-1)
                 image = np.zeros((1, opt.image_size, opt.image_size, 3), np.float64)
                 my_box = np.array([0, 0, 0, 0, 0])
@@ -528,15 +577,28 @@ def predict_from_video(opt):
                 else:
                     from_tracker.append(True)
                     bboxes = [last_known_valid_bbox]
-                
-                if opt.use_facerec and last_known_valid_bbox: #Only use facerec if its ready
-                    if opt.facerec == "bbox" and len(fr.known_faces) == 0: #If no known faces, generate a reference image
-                        
-                        fr.generate_ref_image(fr.convert_bounding_boxes([last_known_valid_bbox]), frame)
+
+                if (
+                    opt.use_facerec and last_known_valid_bbox
+                ):  # Only use facerec if its ready
+                    if (
+                        opt.facerec == "bbox" and len(fr.known_faces) == 0
+                    ):  # If no known faces, generate a reference image
+                        fr.generate_ref_image(
+                            fr.convert_bounding_boxes([last_known_valid_bbox]), frame
+                        )
                     selected_bbox = fr.select_face(bboxes, frame)
                 else:
-                    selected_bbox = select_face(bboxes, frame, face_classifier_model, face_classifier_data_transforms, hor, ver, opt)
-                
+                    selected_bbox = select_face(
+                        bboxes,
+                        frame,
+                        face_classifier_model,
+                        face_classifier_data_transforms,
+                        hor,
+                        ver,
+                        opt,
+                    )
+
                 crop, my_box = extract_crop(frame, selected_bbox, opt)
                 if selected_bbox is None:
                     answers.append(

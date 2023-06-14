@@ -38,7 +38,9 @@ def t_test(x, y):
     bdof = nb - 1
 
     # Compute Welch's test dof (which scipy uses behind the scenes with equal_var=False)
-    dof = (avar / na + bvar / nb) ** 2 / (avar ** 2 / (na ** 2 * adof) + bvar ** 2 / (nb ** 2 * bdof))
+    dof = (avar / na + bvar / nb) ** 2 / (
+        avar**2 / (na**2 * adof) + bvar**2 / (nb**2 * bdof)
+    )
     return t, p, dof
 
 
