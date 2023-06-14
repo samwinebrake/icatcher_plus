@@ -1,38 +1,43 @@
 import pytest
 import sys
+
 sys.path.append("./reproduce/")
 import requests
 import shutil
 import os
 from PIL import Image, ImageChops, ImageStat
 from io import BytesIO
-import face_recognition 
+import face_recognition
 from reproduce.face_rec import FaceRec
 
 face_image_link = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=687&q=80"
-failure_mode_image_link= "https://www.cdc.gov/healthypets/images/pets/cute-dog-headshot.jpg"
+failure_mode_image_link = (
+    "https://www.cdc.gov/healthypets/images/pets/cute-dog-headshot.jpg"
+)
+
 
 def download_file(url):
     r = requests.get(url, stream=True)
     if r.status_code == 200:
         filename = os.path.basename(url)
-        with open('/tmp/%s' % filename, 'wb') as f:
+        with open("/tmp/%s" % filename, "wb") as f:
             r.raw.decode_content = True
             shutil.copyfileobj(r.raw, f)
-            
-        return '/tmp/%s' % filename
+
+        return "/tmp/%s" % filename
+
 
 def convert_bbox(bbox):
     """
     Converts face recognition bounding box to the pipeline's
-    param bbox: bounding box in [top, right, bottom, left] 
+    param bbox: bounding box in [top, right, bottom, left]
     :return: bbox in [left, top, width, height]
     """
     top = bbox[0]
     right = bbox[1]
     bottom = bbox[2]
     left = bbox[3]
-                    
+
     w = right - left
     h = top - bottom
 
@@ -46,16 +51,16 @@ def test_image_generation():
     """
 
     generated_image = download_file(face_image_link)
-    
+
     test_img = face_recognition.load_image_file(generated_image)
 
     fr = FaceRec()
     fr.get_ref_image(generated_image)
-    
+
     locs = fr.facerec_check(test_img)
 
     frame = face_recognition.load_image_file(generated_image)
-    
+
     test_bbox = locs
 
     fr = FaceRec()
@@ -84,7 +89,7 @@ def test_facerec_pass():
 
     generated_image = download_file(face_image_link)
     fr.get_ref_image(generated_image)
-    
+
     test_img = face_recognition.load_image_file(generated_image)
     locs = fr.facerec_check(test_img)
 
@@ -105,6 +110,7 @@ def test_facerec_fail():
     test_img = face_recognition.load_image_file(failure_image)
     locs = fr.facerec_check(test_img)
     assert locs == None
+
 
 def test_face_selection():
     """

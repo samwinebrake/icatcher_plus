@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 import icatcher.draw
 
+
 def test_imports():
     """
     tests that the environment has the dependencies installed
@@ -11,6 +12,7 @@ def test_imports():
     import numpy as np
     import pooch
     import PIL
+
 
 def test_mask():
     image = np.random.random((256, 512, 3))

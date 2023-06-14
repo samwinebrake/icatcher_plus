@@ -12,6 +12,7 @@ class MyModel:
     """
     generic container class for network(torch Module), optimizer and scheduler.
     """
+
     def __init__(self, opt):
         self.opt = copy.deepcopy(opt)
         self.loss_fn = self.get_loss_fn()
@@ -50,15 +51,16 @@ class MyModel:
 
     def get_optimizer(self):
         if self.opt.optimizer == "adam":
-            optimizer = torch.optim.Adam(self.network.parameters(),
-                                         lr=self.opt.lr,
-                                         betas=(0.9, 0.999),
-                                         weight_decay=1e-5)
+            optimizer = torch.optim.Adam(
+                self.network.parameters(),
+                lr=self.opt.lr,
+                betas=(0.9, 0.999),
+                weight_decay=1e-5,
+            )
         elif self.opt.optimizer == "SGD":
-            optimizer = torch.optim.SGD(self.network.parameters(),
-                                        lr=1e-2,
-                                        momentum=0.9,
-                                        weight_decay=1e-4)
+            optimizer = torch.optim.SGD(
+                self.network.parameters(), lr=1e-2, momentum=0.9, weight_decay=1e-4
+            )
         else:
             raise NotImplementedError
         return optimizer
@@ -68,20 +70,28 @@ class MyModel:
         picks a scheduler according to lr policy
         :return: the scheduler
         """
-        if self.opt.lr_policy == 'lambda':
-            lambda_rule = lambda epoch: self.opt.lr_decay_rate ** epoch
-            scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=lambda_rule)
-        elif self.opt.lr_policy == 'plateau':
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, 'min', verbose=True, patience=3)
-        elif self.opt.lr_policy == 'multi_step':
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[3, 5], gamma=0.1)
+        if self.opt.lr_policy == "lambda":
+            lambda_rule = lambda epoch: self.opt.lr_decay_rate**epoch
+            scheduler = torch.optim.lr_scheduler.LambdaLR(
+                self.optimizer, lr_lambda=lambda_rule
+            )
+        elif self.opt.lr_policy == "plateau":
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer, "min", verbose=True, patience=3
+            )
+        elif self.opt.lr_policy == "multi_step":
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                self.optimizer, milestones=[3, 5], gamma=0.1
+            )
         elif self.opt.lr_policy == "cyclic":
-            scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer=self.optimizer,
-                                                          base_lr=self.opt.lr,
-                                                          max_lr=self.opt.lr / 20,
-                                                          step_size_up=3,
-                                                          cycle_momentum=False,
-                                                          verbose=True)
+            scheduler = torch.optim.lr_scheduler.CyclicLR(
+                optimizer=self.optimizer,
+                base_lr=self.opt.lr,
+                max_lr=self.opt.lr / 20,
+                step_size_up=3,
+                cycle_momentum=False,
+                verbose=True,
+            )
         else:
             raise NotImplementedError
         return scheduler
@@ -92,16 +102,16 @@ class MyModel:
         :param which_epoch: "latest" = uses the latest version. any other number = some particular epoch.
         :return:
         """
-        save_filename = '{}_net.pth'.format(str(which_epoch))
+        save_filename = "{}_net.pth".format(str(which_epoch))
         load_path = Path.joinpath(self.opt.experiment_path, save_filename)
         net = self.network
         if isinstance(net, torch.nn.DataParallel):
             net = net.module
-        logging.info('loading the model from {}'.format(str(load_path)))
+        logging.info("loading the model from {}".format(str(load_path)))
         # PyTorch newer than 0.4 (e.g., built from
         # GitHub source), you can remove str() on self.device
         state_dict = torch.load(load_path, map_location=str(self.opt.device))
-        if hasattr(state_dict, '_metadata'):
+        if hasattr(state_dict, "_metadata"):
             del state_dict._metadata
         try:
             net.load_state_dict(state_dict)
@@ -109,7 +119,7 @@ class MyModel:
             new_dict = OrderedDict()
             for i in range(len(state_dict)):
                 k, v = state_dict.popitem(False)
-                new_k = '.'.join(k.split(".")[1:])
+                new_k = ".".join(k.split(".")[1:])
                 new_dict[new_k] = v
             net.load_state_dict(new_dict)
 
@@ -119,7 +129,7 @@ class MyModel:
         :param which_epoch: "latest" = uses the latest version. any other number = some particular epoch.
         :return:
         """
-        save_filename = '{}_net.pth'.format(str(which_epoch))
+        save_filename = "{}_net.pth".format(str(which_epoch))
         save_path = Path.joinpath(self.opt.experiment_path, save_filename)
         torch.save(self.network.state_dict(), str(save_path))
 
@@ -135,17 +145,22 @@ class FullyConnected(torch.nn.Module):
     """
     A straight forward fully-connected neural network, input and output sizes are defined by args.
     """
+
     def __init__(self, args):
-        self.network = torch.nn.ModuleList([
-            torch.nn.Flatten(),
-            torch.nn.Linear((args.image_size**2)*3*args.sliding_window_size, 128),
-            torch.nn.ReLU(),
-            torch.nn.Linear(128, 64),
-            torch.nn.ReLU(),
-            torch.nn.Linear(64, 32),
-            torch.nn.ReLU(),
-            torch.nn.Linear(32, args.number_of_classes),
-        ])
+        self.network = torch.nn.ModuleList(
+            [
+                torch.nn.Flatten(),
+                torch.nn.Linear(
+                    (args.image_size**2) * 3 * args.sliding_window_size, 128
+                ),
+                torch.nn.ReLU(),
+                torch.nn.Linear(128, 64),
+                torch.nn.ReLU(),
+                torch.nn.Linear(64, 32),
+                torch.nn.ReLU(),
+                torch.nn.Linear(32, args.number_of_classes),
+            ]
+        )
 
     def forward(self, x):
         for i, layer in enumerate(self):
@@ -157,28 +172,33 @@ class iCatcherOriginal(torch.nn.Module):
     """
     the vanilla iCatcher architecture
     """
+
     def __init__(self, args):
         super().__init__()
         self.args = args
-        self.network = torch.nn.ModuleList([
-            torch.nn.Conv2d(3, 16, stride=(1, 1), kernel_size=(3, 3), padding=(0, 0)),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d((2, 2)),
-            torch.nn.Conv2d(16, 32, stride=1, kernel_size=(3, 3), padding=0),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(32, 32, stride=1, kernel_size=(3, 3), padding=0),
-            torch.nn.ReLU(), 
-            torch.nn.MaxPool2d((2, 2)),
-            torch.nn.Conv2d(32, 64, stride=1, kernel_size=(3, 3), padding=0),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(64, 64, stride=1, kernel_size=(3, 3), padding=0),
-            torch.nn.Flatten(1)
-        ])
+        self.network = torch.nn.ModuleList(
+            [
+                torch.nn.Conv2d(
+                    3, 16, stride=(1, 1), kernel_size=(3, 3), padding=(0, 0)
+                ),
+                torch.nn.ReLU(),
+                torch.nn.MaxPool2d((2, 2)),
+                torch.nn.Conv2d(16, 32, stride=1, kernel_size=(3, 3), padding=0),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(32, 32, stride=1, kernel_size=(3, 3), padding=0),
+                torch.nn.ReLU(),
+                torch.nn.MaxPool2d((2, 2)),
+                torch.nn.Conv2d(32, 64, stride=1, kernel_size=(3, 3), padding=0),
+                torch.nn.ReLU(),
+                torch.nn.Conv2d(64, 64, stride=1, kernel_size=(3, 3), padding=0),
+                torch.nn.Flatten(1),
+            ]
+        )
         self.predictor = Predictor_vanilla().to(self.args.device)
         self.network.to(self.args.device)
 
     def forward(self, x):
-        x = x['imgs']
+        x = x["imgs"]
         embedding = x.view(-1, 3, 100, 100)
         for i, layer in enumerate(self.network):
             embedding = layer(embedding)
@@ -201,7 +221,7 @@ class RNNModel(torch.nn.Module):
         super().__init__()
         self.args = args
         pretrained_model = resnet18(pretrained=True)
-        modules = list(pretrained_model.children())[:-1]      # delete the last fc layer.
+        modules = list(pretrained_model.children())[:-1]  # delete the last fc layer.
         self.baseModel = torch.nn.Sequential(*modules)
         self.fc1 = torch.nn.Linear(512, 256).to(self.args.device)
         self.bn1 = torch.nn.BatchNorm1d(256).to(self.args.device)
@@ -216,7 +236,9 @@ class RNNModel(torch.nn.Module):
         seq = []
         for tt in range(t):
             with torch.no_grad():
-                out = self.baseModel(x[:, tt, :, :, :])  # use base model to predict per time-slice, but don't train it.
+                out = self.baseModel(
+                    x[:, tt, :, :, :]
+                )  # use base model to predict per time-slice, but don't train it.
                 out = out.view(out.size(0), -1)  # flatten output
             out = self.fc1(out)
             out = self.bn1(out)
@@ -226,7 +248,9 @@ class RNNModel(torch.nn.Module):
             seq.append(out)
         seq = torch.stack(seq, dim=0)
         out, (h_n, h_c) = self.rnn(seq)
-        out = self.fc3(out.transpose(1, 0)[:, 2, :])  # choose RNN_out at the mid time step
+        out = self.fc3(
+            out.transpose(1, 0)[:, 2, :]
+        )  # choose RNN_out at the mid time step
         return out
 
 
@@ -241,8 +265,8 @@ class GazeCodingModel(torch.nn.Module):
         self.predictor = Predictor_fc(self.n, add_box).to(self.args.device)
 
     def forward(self, data):
-        imgs = data['imgs']  # bs x n x 3 x 100 x 100
-        boxs = data['boxs']  # bs x n x 5
+        imgs = data["imgs"]  # bs x n x 3 x 100 x 100
+        boxs = data["boxs"]  # bs x n x 5
         embedding = self.encoder_img(imgs.view(-1, 3, 100, 100)).view(-1, self.n, 256)
         if self.add_box:
             box_embedding = self.encoder_box(boxs.view(-1, 5)).view(-1, self.n, 256)
@@ -262,8 +286,8 @@ class GazeCodingModel3D(torch.nn.Module):
         self.predictor = Predictor_fc(2, add_box)
 
     def forward(self, data):
-        imgs = data['imgs'].to(self.device)  # bs x n x 3 x 100 x 100
-        boxs = data['boxs'].to(self.device)  # bs x n x 5
+        imgs = data["imgs"].to(self.device)  # bs x n x 3 x 100 x 100
+        boxs = data["boxs"].to(self.device)  # bs x n x 5
         embedding = self.encoder_img(imgs)
         if self.add_box:
             box_embedding = self.encoder_box(boxs.view(boxs.size(0), -1))
@@ -326,20 +350,39 @@ class Predictor_fc(torch.nn.Module):
         return x
 
 
-
 class Encoder_img_3d(torch.nn.Module):
     def __init__(self, in_channel=3):
         super().__init__()
-        self.conv1_1 = torch.nn.Conv3d(in_channel, 16, kernel_size=(3, 5, 5), stride=(1, 2, 2), padding=(1, 2, 2))
-        self.conv1_2 = torch.nn.Conv3d(16, 32, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2))
-        self.conv2_1 = torch.nn.Conv3d(32, 64, kernel_size=(3, 5, 5), stride=(2, 2, 2), padding=(1, 2, 2))
-        self.conv2_2 = torch.nn.Conv3d(64, 64, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2))
-        self.conv3_1 = torch.nn.Conv3d(64, 128, kernel_size=(3, 5, 5), stride=(2, 2, 2), padding=(1, 2, 2))
-        self.conv3_2 = torch.nn.Conv3d(128, 128, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2))
-        self.conv4_1 = torch.nn.Conv3d(128, 256, kernel_size=(3, 5, 5), stride=(2, 2, 2), padding=(1, 2, 2))
-        self.conv4_2 = torch.nn.Conv3d(256, 256, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2))
-        self.conv5_1 = torch.nn.Conv3d(256, 512, kernel_size=(3, 5, 5), stride=(1, 2, 2), padding=(1, 2, 2))
-        self.conv5_2 = torch.nn.Conv3d(512, 512, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2))
+        self.conv1_1 = torch.nn.Conv3d(
+            in_channel, 16, kernel_size=(3, 5, 5), stride=(1, 2, 2), padding=(1, 2, 2)
+        )
+        self.conv1_2 = torch.nn.Conv3d(
+            16, 32, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2)
+        )
+        self.conv2_1 = torch.nn.Conv3d(
+            32, 64, kernel_size=(3, 5, 5), stride=(2, 2, 2), padding=(1, 2, 2)
+        )
+        self.conv2_2 = torch.nn.Conv3d(
+            64, 64, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2)
+        )
+        self.conv3_1 = torch.nn.Conv3d(
+            64, 128, kernel_size=(3, 5, 5), stride=(2, 2, 2), padding=(1, 2, 2)
+        )
+        self.conv3_2 = torch.nn.Conv3d(
+            128, 128, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2)
+        )
+        self.conv4_1 = torch.nn.Conv3d(
+            128, 256, kernel_size=(3, 5, 5), stride=(2, 2, 2), padding=(1, 2, 2)
+        )
+        self.conv4_2 = torch.nn.Conv3d(
+            256, 256, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2)
+        )
+        self.conv5_1 = torch.nn.Conv3d(
+            256, 512, kernel_size=(3, 5, 5), stride=(1, 2, 2), padding=(1, 2, 2)
+        )
+        self.conv5_2 = torch.nn.Conv3d(
+            512, 512, kernel_size=(3, 5, 5), stride=(1, 1, 1), padding=(1, 2, 2)
+        )
         self.bn1_1 = torch.nn.BatchNorm3d(16)
         self.bn1_2 = torch.nn.BatchNorm3d(32)
         self.bn2_1 = torch.nn.BatchNorm3d(64)
@@ -372,7 +415,7 @@ class Encoder_img_3d(torch.nn.Module):
 class Encoder_box_seq(torch.nn.Module):
     def __init__(self, n):
         super().__init__()
-        self.fc1 = torch.nn.Linear(5*n, 512)
+        self.fc1 = torch.nn.Linear(5 * n, 512)
         self.fc2 = torch.nn.Linear(512, 512)
         self.bn = torch.nn.BatchNorm1d(512)
         self.dropout = torch.nn.Dropout(0.2)
