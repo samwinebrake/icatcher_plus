@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import preprocess
 import pandas as pd
-
+import os
 
 class BaseParser:
     def __init__(self):
@@ -85,14 +85,25 @@ class CompressedParser(BaseParser):
         super().__init__()
 
     def parse(self, video_id, label_path=None):
-        data = np.load(label_path)
+        try:
+            data = np.load(label_path)
+        except FileNotFoundError:
+            # Attempts to follow a symbolic link
+            label_path = os.readlink(label_path)
+            data = np.load(label_path)
+            
         data = data["arr_0"]
         data[:4] = -3  # mark first frames as invalid
         data[-4:] = -3  # mark last frames as invalid
         return data, 4, len(data)-4
 
     def get_confidence(self, label_path):
-        data = np.load(label_path)
+        try:
+            data = np.load(label_path)
+        except FileNotFoundError:
+            # Attempts to follow a symbolic link
+            label_path = os.readlink(label_path)
+            data = np.load(label_path)
         confidence = data["arr_1"]
         confidence[:4] = -1  # mark first frames as invalid
         confidence[-4:] = -1  # mark last frames as invalid
@@ -383,8 +394,11 @@ class VCXParser(BaseParser):
             if label == 'off' or label == 'center':
                 label = 'away'
             if self.start_times:
-                start_time = self.start_times[video_id]
-                timestamp -= start_time
+                try:
+                    start_time = self.start_times[video_id]
+                    timestamp -= start_time
+                except:
+                    return
             assert 0 <= timestamp < 60 * 60 * self.fps, "Starting time provided is after first response !"
             final_responses.append([timestamp, status, label])
         assert len(final_responses) != 0, "No responses in file !"
