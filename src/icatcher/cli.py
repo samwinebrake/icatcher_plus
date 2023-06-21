@@ -384,7 +384,11 @@ def create_output_streams(video_path, framerate, resolution, opt):
     return video_output_file, prediction_output_file, skip
 
 
-def cleanup( video_output_file, prediction_output_file, answers, confidences,
+def cleanup(
+    video_output_file,
+    prediction_output_file,
+    answers,
+    confidences,
     framerate,
     frame_count,
     cap,
