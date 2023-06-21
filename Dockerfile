@@ -1,5 +1,6 @@
 # test dockerfile.. testing automated build
-FROM python:3.9
+# FROM python:3.9
+FROM  xychelsea/ffmpeg-nvidia:latest-jupyter
 
 RUN mkdir /src
 RUN mkdir /src/icatcher
