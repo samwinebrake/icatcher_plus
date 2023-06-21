@@ -59,3 +59,5 @@ push = false
 "src/icatcher/__init__.py" = [
     "{version}"
 ]
+
+[tool.poetry]
