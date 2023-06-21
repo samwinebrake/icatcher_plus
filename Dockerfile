@@ -10,6 +10,7 @@ COPY pyproject.toml /src/icatcher
 WORKDIR /src/icatcher
 ENV PYTHONPATH=${PYTHONPATH}:${PWD}
 
+RUN python -m pip install --upgrade pip
 RUN python -m pip install .
 # RUN pip3 install poetry
 # RUN poetry config virtualenvs.create false
