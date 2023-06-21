@@ -169,5 +169,3 @@ We benchmarked iCatcher+ performance over 10 videos (res 640 x 480). Reported re
     
 # Contributions
 Feel free to contribute by submitting a pull request. Make sure to run all tests under /tests
-
-

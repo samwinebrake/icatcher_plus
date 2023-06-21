@@ -18,6 +18,7 @@ import video
 import csv
 from face_detector import detect_face_opencv_dnn, extract_bboxes
 from face_detection import RetinaFace
+from face_rec import FaceRec
 
 
 def create_annotation_split(args, csv_name):
@@ -639,6 +640,7 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
         gaze_labels = []
         face_labels = []
 
+        fr = FaceRec()
         cap = cv2.VideoCapture(str(video_file))
         vfr, meta_data = video.is_video_vfr(video_file, get_meta_data=True)
         fps = video.get_fps(video_file)
@@ -724,48 +726,28 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                                     if bbox[i][3] - bbox[i][1] < min_value:
                                         min_value = bbox[i][3] - bbox[i][1]
                                         selected_face = i
-                                    crop_img = frame[
-                                        face[1] : face[1] + face[3],
-                                        face[0] : face[0] + face[2],
-                                    ]
+                                    crop_img = frame[face[1]:face[1] + face[3], face[0]:face[0] + face[2]]
                                     # resized_img = cv2.resize(crop_img, (100, 100))
                                     resized_img = crop_img  # do not lose information in pre-processing step!
-                                    face_box = np.array(
-                                        [
-                                            face[1],
-                                            face[1] + face[3],
-                                            face[0],
-                                            face[0] + face[2],
-                                        ]
-                                    )
+                                    face_box = np.array([face[1], face[1] + face[3], face[0], face[0] + face[2]])
                                     img_shape = np.array(frame.shape)
-                                    ratio = np.array(
-                                        [
-                                            face_box[0] / img_shape[0],
-                                            face_box[1] / img_shape[0],
-                                            face_box[2] / img_shape[1],
-                                            face_box[3] / img_shape[1],
-                                        ]
-                                    )
-                                    face_size = (ratio[1] - ratio[0]) * (
-                                        ratio[3] - ratio[2]
-                                    )
+                                    ratio = np.array([face_box[0] / img_shape[0], face_box[1] / img_shape[0],
+                                                      face_box[2] / img_shape[1], face_box[3] / img_shape[1]])
+                                    face_size = (ratio[1] - ratio[0]) * (ratio[3] - ratio[2])
                                     face_ver = (ratio[0] + ratio[1]) / 2
                                     face_hor = (ratio[2] + ratio[3]) / 2
                                     face_height = ratio[1] - ratio[0]
                                     face_width = ratio[3] - ratio[2]
                                     feature_dict = {
-                                        "face_box": face_box,
-                                        "img_shape": img_shape,
-                                        "face_size": face_size,
-                                        "face_ver": face_ver,
-                                        "face_hor": face_hor,
-                                        "face_height": face_height,
-                                        "face_width": face_width,
+                                        'face_box': face_box,
+                                        'img_shape': img_shape,
+                                        'face_size': face_size,
+                                        'face_ver': face_ver,
+                                        'face_hor': face_hor,
+                                        'face_height': face_height,
+                                        'face_width': face_width
                                     }
-                                    img_filename = (
-                                        img_folder / f"{frame_counter:05d}_{i:01d}.png"
-                                    )
+                                    img_filename = img_folder / f'{frame_counter:05d}_{i:01d}.png'
                                     if not img_filename.is_file() or force_create:
                                         cv2.imwrite(str(img_filename), resized_img)
                                     box_filename = (
@@ -775,6 +757,9 @@ def process_dataset_lowest_face(args, gaze_labels_only=False, force_create=False
                                         np.save(str(box_filename), feature_dict)
                                 valid_counter += 1
                                 face_labels.append(selected_face)
+                                if args.use_facerec and fr.known_faces == 0:
+                                    new_bbox = fr.convert_bounding_boxes([bbox[selected_face]])
+                                    fr.generate_ref_image(new_bbox[0], frame)
                                 # logging.info(f"valid frame in class {gaze_class}")
                     else:
                         no_annotation_counter += 1

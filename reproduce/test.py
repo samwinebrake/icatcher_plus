@@ -8,6 +8,7 @@ import visualize
 import logging
 import face_classifier
 import torch
+import face_recognition
 import models
 import data
 import video
@@ -23,6 +24,8 @@ from face_detector import (
 )
 from face_detection import RetinaFace
 import multiprocessing as mp
+from face_rec import FaceRec
+
 
 
 class FPS:
@@ -71,6 +74,7 @@ def select_face(bboxes, frame, fc_model, fc_data_transforms, hor, ver, opt):
     :param hor: the last known horizontal correct face location
     :param ver: the last known vertical correct face location
     :param opt: used to pull the device id
+    :param fr: face recognition, used only in the case where it's flagged and no faces were found selected
     :return: the cropped face and its bbox data
     """
     if fc_model:
@@ -524,6 +528,12 @@ def predict_from_video(opt):
 
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # reset frames to 0
 
+        #Set up face recognition for use
+        if opt.use_facerec != None:
+            fr = FaceRec()
+            if opt.facerec == "reference":
+                fr.get_ref_image(opt.facerec_ref)
+
         # loop over frames
         ret_val, frame = cap.read()
         while frame is not None:
@@ -568,15 +578,7 @@ def predict_from_video(opt):
                 else:
                     from_tracker.append(True)
                     bboxes = [last_known_valid_bbox]
-                selected_bbox = select_face(
-                    bboxes,
-                    frame,
-                    face_classifier_model,
-                    face_classifier_data_transforms,
-                    hor,
-                    ver,
-                    opt,
-                )
+                selected_bbox = select_face(bboxes, frame, face_classifier_model, face_classifier_data_transforms, hor, ver, opt)
                 crop, my_box = extract_crop(frame, selected_bbox, opt)
                 if selected_bbox is None:
                     answers.append(
@@ -639,6 +641,7 @@ def predict_from_video(opt):
                         probs = torch.nn.functional.softmax(outputs, dim=1)
                         _, prediction = torch.max(outputs, 1)
                         confidence, _ = torch.max(probs, 1)
+                        print(confidence)
                         float32_conf = confidence.cpu().numpy()[0]
                         int32_pred = prediction.cpu().numpy()[0]
                     answers[loc] = int32_pred  # update answers for the middle frame
