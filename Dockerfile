@@ -1,6 +1,8 @@
 # test dockerfile.. testing automated build
-# FROM python:3.9
-FROM  xychelsea/ffmpeg-nvidia:latest-jupyter
+FROM python:3.9
+
+# get permission denied with this
+# FROM  xychelsea/ffmpeg-nvidia:latest-jupyter
 
 RUN mkdir /src
 RUN mkdir /src/icatcher
