@@ -1,7 +1,6 @@
 FROM  xychelsea/ffmpeg-nvidia:latest-jupyter
 
 RUN conda install anaconda-client -n base
-RUN conda activate base
 RUN conda update conda
 
 
