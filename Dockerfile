@@ -1,4 +1,5 @@
-FROM  xychelsea/ffmpeg-nvidia:latest-jupyter
+# FROM  xychelsea/ffmpeg-nvidia:latest-jupyter
+FROM python:3
 
 RUN conda install anaconda-client -n base
 RUN conda update conda
@@ -14,6 +15,3 @@ USER root
 
 RUN mkdir /models
 ENV ICATCHER_DATA_DIR=/models
-
-USER ${ANACONDA_UID}
-
