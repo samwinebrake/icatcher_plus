@@ -1,5 +1,5 @@
-# FROM  xychelsea/ffmpeg-nvidia:latest-jupyter
-FROM python:3
+FROM  xychelsea/ffmpeg-nvidia:latest-jupyter
+# FROM python:3
 
 RUN conda install anaconda-client -n base
 RUN conda update conda
