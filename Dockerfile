@@ -5,8 +5,6 @@ RUN conda update conda
 
 RUN conda install python=3.9
 RUN conda install pip
-RUN conda install matplotlib
-RUN conda install seaborn
 RUN conda install scikit-learn
 RUN conda install tensorboard
 RUN conda install pytest
