@@ -1,4 +1,5 @@
 import sys
+import pooch
 
 def load_models(version):
     GOODBOY = pooch.create(
