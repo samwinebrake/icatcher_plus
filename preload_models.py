@@ -14,6 +14,10 @@ def load_models(version):
             "icatcher+_models.zip": "https://osf.io/h7svp/download",
         },
     )
+    
+    file_paths = GOODBOY.fetch(
+        "icatcher+_models.zip", processor=pooch.Unzip()
+    )
 
 
 def strip_version(version_output):
